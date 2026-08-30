@@ -1,3 +1,6 @@
+<!-- [![PHP Tests](https://github.com/blueprintau/collections/actions/workflows/tests.yml/badge.svg?branch=development)](https://github.com/blueprintau/collections/actions/workflows/tests.yml) -->
+[![Packagist](https://img.shields.io/packagist/v/blueprintau/collections.svg)](https://packagist.org/packages/blueprintau/collections)
+
 # BlueprintAU Collections
 
 A pure, standalone array wrapper for the BlueprintAU ecosystem. This is the
