@@ -128,11 +128,21 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * Determine whether the collection contains a given item.
      *
      * @param mixed $key
-     * @param mixed $operator
      * @param mixed $value
+     * @param ComparisonOperator $operator
      * @return bool
      */
-    public function contains(mixed $key, mixed $operator = null, mixed $value = null): bool;
+    public function contains(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::LooseEquals): bool;
+
+    /**
+     * Filter the collection to items whose column matches a value.
+     *
+     * @param mixed $key
+     * @param mixed $value
+     * @param ComparisonOperator $operator
+     * @return static
+     */
+    public function where(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::LooseEquals): static;
 
     /**
      * Determine whether every item passes the given callback.

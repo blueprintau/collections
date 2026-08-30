@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlueprintAU\Collections\Tests;
 
 use BlueprintAU\Collections\Collection;
+use BlueprintAU\Collections\ComparisonOperator;
 use PHPUnit\Framework\TestCase;
 
 final class CollectionTest extends TestCase
@@ -79,6 +80,11 @@ final class CollectionTest extends TestCase
     public function test_range_descending(): void
     {
         $this->assertSame([3, 2, 1], Collection::range(3, 1)->all());
+    }
+
+    public function test_range_zero_step_returns_empty(): void
+    {
+        $this->assertSame([], Collection::range(1, 5, 0)->all());
     }
 
     public function test_pluck(): void
@@ -218,6 +224,43 @@ final class CollectionTest extends TestCase
         $this->assertFalse($this->users()->contains(fn ($u) => $u['role'] === 'superuser'));
     }
 
+    public function test_contains_operator(): void
+    {
+        $this->assertTrue($this->users()->contains('id', 1, ComparisonOperator::GreaterThan));
+        $this->assertFalse($this->users()->contains('id', 3, ComparisonOperator::GreaterThan));
+        $this->assertTrue($this->users()->contains('id', 3, ComparisonOperator::GreaterThanOrEqual));
+        $this->assertTrue($this->users()->contains('id', 2, ComparisonOperator::LessThan));
+        $this->assertTrue($this->users()->contains('id', 1, ComparisonOperator::LessThanOrEqual));
+        $this->assertTrue($this->users()->contains('id', 2, ComparisonOperator::NotEquals));
+        $this->assertTrue($this->users()->contains('id', 2, ComparisonOperator::Equals));
+        $this->assertTrue($this->users()->contains('id', [1, 3], ComparisonOperator::In));
+        $this->assertFalse($this->users()->contains('id', [4, 5], ComparisonOperator::In));
+        $this->assertTrue($this->users()->contains('id', [4, 5], ComparisonOperator::NotIn));
+        $this->assertTrue($this->users()->contains('id', [1, 2], ComparisonOperator::NotIn));
+    }
+
+    public function test_contains_equals_is_strict_loose_equals_is_loose(): void
+    {
+        $items = new Collection([['id' => 1], ['id' => '1']]);
+        $this->assertTrue($items->contains('id', 1, ComparisonOperator::LooseEquals));
+        $this->assertTrue($items->contains('id', '1', ComparisonOperator::LooseEquals));
+        $this->assertTrue($items->contains('id', 1, ComparisonOperator::Equals));
+        $this->assertTrue($items->contains('id', '1', ComparisonOperator::Equals));
+        $this->assertFalse($items->contains('id', 2, ComparisonOperator::Equals));
+    }
+
+    public function test_where(): void
+    {
+        $result = $this->users()->where('role', 'user');
+        $this->assertSame(['Bob', 'Carol'], $result->pluck('name')->all());
+    }
+
+    public function test_where_operator(): void
+    {
+        $result = $this->users()->where('id', 1, ComparisonOperator::GreaterThan);
+        $this->assertSame(['Bob', 'Carol'], $result->pluck('name')->all());
+    }
+
     public function test_every(): void
     {
         $this->assertTrue((new Collection([2, 4, 6]))->every(fn ($n) => $n % 2 === 0));
@@ -270,6 +313,16 @@ final class CollectionTest extends TestCase
         $this->assertSame('Carol', $this->users()->last()['name']);
     }
 
+    public function test_last_with_callback(): void
+    {
+        $this->assertSame('Carol', $this->users()->last(fn ($u) => $u['role'] === 'user')['name']);
+    }
+
+    public function test_last_null_value_is_not_absence(): void
+    {
+        $this->assertNull((new Collection([null]))->last(null, 'fallback'));
+    }
+
     public function test_values_keys(): void
     {
         $this->assertSame([0, 1, 2], $this->users()->keys()->all());
@@ -288,10 +341,25 @@ final class CollectionTest extends TestCase
         $this->assertSame([1, 2, 3], (new Collection([1, 1, 2, 3, 3]))->unique()->values()->all());
     }
 
+    public function test_unique_distinguishes_int_and_string(): void
+    {
+        $this->assertCount(2, (new Collection([1, '1']))->unique());
+    }
+
     public function test_unique_by_key(): void
     {
         $result = $this->users()->unique('role');
         $this->assertSame(['Alice', 'Bob'], $result->pluck('name')->all());
+    }
+
+    public function test_unique_by_key_strict(): void
+    {
+        $items = new Collection([
+            ['id' => 1, 'tag' => 1],
+            ['id' => 2, 'tag' => '1'],
+        ]);
+        $this->assertCount(2, $items->unique('tag', strict: true));
+        $this->assertCount(1, $items->unique('tag'));
     }
 
     public function test_sort(): void
@@ -302,6 +370,18 @@ final class CollectionTest extends TestCase
     public function test_sort_by(): void
     {
         $this->assertSame(['Alice', 'Bob', 'Carol'], $this->users()->sortBy('name')->pluck('name')->all());
+    }
+
+    public function test_sort_by_numeric_default(): void
+    {
+        $items = new Collection([['id' => 10], ['id' => 2], ['id' => 1]]);
+        $this->assertSame([1, 2, 10], $items->sortBy('id')->pluck('id')->all());
+    }
+
+    public function test_sort_by_numeric_descending(): void
+    {
+        $items = new Collection([['id' => 10], ['id' => 2], ['id' => 1]]);
+        $this->assertSame([10, 2, 1], $items->sortBy('id', descending: true)->pluck('id')->all());
     }
 
     public function test_sort_by_descending(): void

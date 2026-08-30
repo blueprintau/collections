@@ -86,7 +86,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Create a collection of numbers in the given range.
      *
      * Mirrors PHP's `range()`: when $to is less than $from, the sequence is
-     * generated in descending order.
+     * generated in descending order. A step of zero returns an empty
+     * collection rather than throwing.
      *
      * @param int|float|string $from
      * @param int|float|string $to
@@ -95,6 +96,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      */
     public static function range(int|float|string $from, int|float|string $to, int|float $step = 1): static
     {
+        if ($step == 0) {
+            return new static();
+        }
         return new static(range($from, $to, $step));
     }
 
@@ -300,7 +304,11 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
             return array_sum($this->items);
         }
         if (is_callable($column)) {
-            return $this->map($column)->sum();
+            $sum = 0;
+            foreach ($this->items as $item) {
+                $sum += $column($item);
+            }
+            return $sum;
         }
         return $this->pluck($column)->sum();
     }
@@ -336,7 +344,14 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
             return min($this->items);
         }
         if (is_callable($column)) {
-            return $this->map($column)->min();
+            $min = null;
+            foreach ($this->items as $item) {
+                $value = $column($item);
+                if ($min === null || $value < $min) {
+                    $min = $value;
+                }
+            }
+            return $min;
         }
         return $this->pluck($column)->min();
     }
@@ -358,7 +373,14 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
             return max($this->items);
         }
         if (is_callable($column)) {
-            return $this->map($column)->max();
+            $max = null;
+            foreach ($this->items as $item) {
+                $value = $column($item);
+                if ($max === null || $value > $max) {
+                    $max = $value;
+                }
+            }
+            return $max;
         }
         return $this->pluck($column)->max();
     }
@@ -379,15 +401,20 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Supports three call signatures:
      *  - contains($value)          — strict value membership
      *  - contains(callable)        — any item passes the predicate
-     *  - contains($key, $operator) / contains($key, $operator, $value)
-     *                              — loose comparison of a column against a value
+     *  - contains($key, $value) / contains($key, $value, $operator)
+     *                              — comparison of a column against a value
+     *
+     * The column form compares `value($item, $key)` against `$value` using the
+     * given operator (defaulting to loose equality). The operator is a
+     * `ComparisonOperator` enum, so an invalid operator is a compile-time error
+     * rather than a silently-wrong result.
      *
      * @param mixed $key
-     * @param mixed $operator
      * @param mixed $value
+     * @param ComparisonOperator $operator
      * @return bool
      */
-    public function contains(mixed $key, mixed $operator = null, mixed $value = null): bool
+    public function contains(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::LooseEquals): bool
     {
         if (func_num_args() === 1) {
             if (is_callable($key)) {
@@ -395,10 +422,52 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
             }
             return in_array($key, $this->items, true);
         }
-        if (func_num_args() === 2) {
-            return $this->contains(fn ($item) => $this->value($item, $key) == $operator);
-        }
-        return $this->contains(fn ($item) => $this->value($item, $key) == $value);
+
+        return $this->contains(fn ($item) => $this->compare($this->value($item, $key), $operator, $value));
+    }
+
+    /**
+     * Compare a column value against a target using a comparison operator.
+     *
+     * The match is exhaustive over `ComparisonOperator`, so every case is
+     * handled explicitly and there is no silent fallback. `Equals` is strict
+     * (`===`); `LooseEquals` is loose (`==`).
+     *
+     * @param mixed $actual
+     * @param ComparisonOperator $operator
+     * @param mixed $value
+     * @return bool
+     */
+    protected function compare(mixed $actual, ComparisonOperator $operator, mixed $value): bool
+    {
+        return match ($operator) {
+            ComparisonOperator::Equals => $actual === $value,
+            ComparisonOperator::LooseEquals => $actual == $value,
+            ComparisonOperator::NotEquals => $actual != $value,
+            ComparisonOperator::GreaterThan => $actual > $value,
+            ComparisonOperator::GreaterThanOrEqual => $actual >= $value,
+            ComparisonOperator::LessThan => $actual < $value,
+            ComparisonOperator::LessThanOrEqual => $actual <= $value,
+            ComparisonOperator::In => is_array($value) && in_array($actual, $value, true),
+            ComparisonOperator::NotIn => is_array($value) && !in_array($actual, $value, true),
+        };
+    }
+
+    /**
+     * Filter the collection to items whose column matches a value.
+     *
+     * Returns a new collection of the items where `value($item, $key)`
+     * compares against `$value` using the given operator (defaulting to loose
+     * equality). Keys are preserved.
+     *
+     * @param mixed $key
+     * @param mixed $value
+     * @param ComparisonOperator $operator
+     * @return static
+     */
+    public function where(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::LooseEquals): static
+    {
+        return $this->filter(fn ($item) => $this->compare($this->value($item, $key), $operator, $value));
     }
 
     /**
@@ -494,7 +563,12 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
             $key = array_key_last($this->items);
             return $key === null ? $default : $this->items[$key];
         }
-        return $this->reverse()->first($callback, $default);
+        foreach (array_reverse(array_keys($this->items)) as $key) {
+            if ($callback($this->items[$key], $key)) {
+                return $this->items[$key];
+            }
+        }
+        return $default;
     }
 
     /**
@@ -567,17 +641,53 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     public function unique(?string $key = null, bool $strict = false): static
     {
         if ($key === null) {
-            return new static(array_unique($this->items, $strict ? SORT_REGULAR : SORT_STRING));
+            $seen = [];
+            $result = [];
+            foreach ($this->items as $k => $item) {
+                if (!$this->isSeen($item, $seen, true)) {
+                    $result[$k] = $item;
+                }
+            }
+            return new static($result);
         }
         $seen = [];
-        return $this->filter(function ($item) use ($key, &$seen) {
-            $value = $this->value($item, $key);
-            if (in_array($value, $seen, true)) {
-                return false;
-            }
-            $seen[] = $value;
-            return true;
+        return $this->filter(function ($item) use ($key, $strict, &$seen) {
+            return !$this->isSeen($this->value($item, $key), $seen, $strict);
         });
+    }
+
+    /**
+     * Determine whether a value has already been seen, tracking it if not.
+     *
+     * Uses an O(1) hash lookup for scalar values; falls back to a linear scan
+     * for non-scalar values (arrays/objects) that cannot be used as array keys.
+     * In strict mode the hash key is type-prefixed so that `1` and `'1'` are
+     * treated as distinct.
+     *
+     * @param mixed $value
+     * @param array<int|string, mixed> $seen
+     * @param bool $strict
+     * @return bool
+     */
+    protected function isSeen(mixed $value, array &$seen, bool $strict): bool
+    {
+        if (is_scalar($value) || $value === null) {
+            $key = $strict
+                ? get_debug_type($value) . ':' . (string) $value
+                : (string) $value;
+            if (array_key_exists($key, $seen)) {
+                return true;
+            }
+            $seen[$key] = true;
+            return false;
+        }
+        foreach ($seen as $existing) {
+            if ($strict ? $existing === $value : $existing == $value) {
+                return true;
+            }
+        }
+        $seen[] = $value;
+        return false;
     }
 
     /**
@@ -600,7 +710,11 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Sort the collection by a column or callback.
      *
      * Keys are preserved. Set descending to true for reverse order. The
-     * $options flag is passed through to the underlying comparison.
+     * $options flag is passed through to the underlying comparison:
+     *  - SORT_NUMERIC — numeric comparison
+     *  - SORT_STRING  — lexical (string) comparison
+     *  - SORT_REGULAR (default) — numeric-aware when both values are numeric,
+     *    otherwise lexical
      *
      * @param string|callable(TValue): mixed $column
      * @param int $options
@@ -614,9 +728,13 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
         uasort($results, function ($a, $b) use ($callback, $options, $descending) {
             $aVal = $callback($a);
             $bVal = $callback($b);
-            $cmp = $options === SORT_NUMERIC
-                ? $aVal <=> $bVal
-                : strcmp((string) $aVal, (string) $bVal);
+            $cmp = match ($options) {
+                SORT_NUMERIC => $aVal <=> $bVal,
+                SORT_STRING => strcmp((string) $aVal, (string) $bVal),
+                default => is_numeric($aVal) && is_numeric($bVal)
+                    ? $aVal <=> $bVal
+                    : strcmp((string) $aVal, (string) $bVal),
+            };
             return $descending ? -$cmp : $cmp;
         });
         return new static($results);
