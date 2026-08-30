@@ -38,7 +38,7 @@
     "scripts": {
         "test": "phpunit",
         "analyse": "phpstan analyse --memory-limit=512M",
-        "audit": "composer audit --locked"
+        "security:audit": "composer audit --locked"
     },
     "extra": {
         "branch-alias": {

@@ -48,4 +48,4 @@ jobs:
               run: composer analyse
 
             - name: Run dependency audit
-              run: composer audit
+              run: composer security:audit

@@ -13,6 +13,8 @@ namespace BlueprintAU\Collections;
  * @template TKey of array-key
  * @template TValue
  *
+ * @phpstan-consistent-constructor
+ *
  * @implements Enumerable<TKey, TValue>
  * @implements \ArrayAccess<TKey, TValue>
  */
@@ -121,9 +123,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Map each item through a callback, producing a new collection.
      *
-     * The callback receives the item and its key. Keys are preserved.
+     * Keys are preserved.
      *
-     * @param callable(TValue, TKey): mixed $callback
+     * @param callable(TValue): mixed $callback
      * @return static
      */
     public function map(callable $callback): static
@@ -136,7 +138,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * When no callback is given, truthy items are kept. Keys are preserved.
      *
-     * @param (callable(TValue, TKey): bool)|null $callback
+     * @param (callable(TValue): bool)|null $callback
      * @return static
      */
     public function filter(?callable $callback = null): static
@@ -192,7 +194,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * items in that group.
      *
      * @param ((TValue is array ? key-of<TValue> : string)|callable(TValue, TKey): mixed) $groupBy
-     * @return static
+     * @return static<(int|string), non-empty-list<TValue>>
      */
     public function groupBy(int|string|callable $groupBy): static
     {
@@ -209,7 +211,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * The callback must return an array; later keys overwrite earlier ones.
      *
-     * @param callable(TValue, TKey): array $callback
+     * @param callable(TValue, TKey): array<mixed, mixed> $callback
      * @return static
      */
     public function mapWithKeys(callable $callback): static
@@ -229,7 +231,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Equivalent to `map($callback)->collapse()`.
      *
-     * @param callable(TValue, TKey): mixed $callback
+     * @param callable(TValue): mixed $callback
      * @return static
      */
     public function flatMap(callable $callback): static
@@ -260,10 +262,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Reduce the collection to a single value using a callback.
      *
-     * The callback receives the carry, the item, and the item's key.
+     * The callback receives the carry and the item.
      *
      * @template TCarry
-     * @param callable(TCarry, TValue, TKey): TCarry $callback
+     * @param callable(TCarry, TValue): TCarry $callback
      * @param TCarry $initial
      * @return TCarry
      */
@@ -306,12 +308,16 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Get the minimum value, or the minimum of a single column.
      *
-     * @template TColumn
-     * @param string|callable(TValue): TColumn|null $column
-     * @return TColumn|TValue
+     * Returns null for an empty collection.
+     *
+     * @param string|callable(TValue): mixed|null $column
+     * @return mixed
      */
     public function min(string|callable|null $column = null): mixed
     {
+        if ($this->items === []) {
+            return null;
+        }
         if ($column === null) {
             return min($this->items);
         }
@@ -324,12 +330,16 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Get the maximum value, or the maximum of a single column.
      *
-     * @template TColumn
-     * @param string|callable(TValue): TColumn|null $column
-     * @return TColumn|TValue
+     * Returns null for an empty collection.
+     *
+     * @param string|callable(TValue): mixed|null $column
+     * @return mixed
      */
     public function max(string|callable|null $column = null): mixed
     {
+        if ($this->items === []) {
+            return null;
+        }
         if ($column === null) {
             return max($this->items);
         }
@@ -467,7 +477,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     public function last(?callable $callback = null, mixed $default = null): mixed
     {
         if ($callback === null) {
-            return $this->items[array_key_last($this->items)] ?? $default;
+            $key = array_key_last($this->items);
+            return $key === null ? $default : $this->items[$key];
         }
         return $this->reverse()->first($callback, $default);
     }
@@ -577,7 +588,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Keys are preserved. Set descending to true for reverse order. The
      * $options flag is passed through to the underlying comparison.
      *
-     * @param ((TValue is array ? key-of<TValue> : string)|callable(TValue): mixed) $column
+     * @param string|callable(TValue): mixed $column
      * @param int $options
      * @param bool $descending
      * @return static
@@ -621,9 +632,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     public function toArray(): array
     {
         return array_map(
-            fn ($value) => $value instanceof Enumerable && method_exists($value, 'toArray')
-                ? $value->toArray()
-                : $value,
+            fn ($value) => $value instanceof Enumerable ? $value->toArray() : $value,
             $this->items
         );
     }
@@ -636,7 +645,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      */
     public function toJson(int $options = 0): string
     {
-        return json_encode($this->jsonSerialize(), $options);
+        return json_encode($this->jsonSerialize(), $options | JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -722,7 +731,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Get an iterator for the collection's items.
      *
-     * @return \Traversable
+     * @return \ArrayIterator<TKey, TValue>
      */
     public function getIterator(): \Traversable
     {

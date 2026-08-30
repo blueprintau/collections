@@ -78,9 +78,9 @@ PHP **8.3 or newer**.
 
 ```bash
 composer install
-composer test        # PHPUnit
-composer analyse     # PHPStan (level 8)
-composer audit       # dependency security advisories
+composer test          # PHPUnit
+composer analyse       # PHPStan (level 6)
+composer security:audit  # dependency security advisories
 ```
 
 ## License

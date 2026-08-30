@@ -14,6 +14,8 @@ namespace BlueprintAU\Collections;
  *
  * @template TKey of array-key
  * @template TValue
+ *
+ * @extends \IteratorAggregate<TKey, TValue>
  */
 interface Enumerable extends \IteratorAggregate, \JsonSerializable
 {
@@ -22,7 +24,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Map each item through a callback, producing a new collection.
      *
-     * @param callable(TValue, TKey): mixed $callback
+     * @param callable(TValue): mixed $callback
      * @return static
      */
     public function map(callable $callback): static;
@@ -30,7 +32,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Filter the collection to items that pass the given callback.
      *
-     * @param (callable(TValue, TKey): bool)|null $callback
+     * @param (callable(TValue): bool)|null $callback
      * @return static
      */
     public function filter(?callable $callback = null): static;
@@ -63,7 +65,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Map each item to an associative array and merge the results.
      *
-     * @param callable(TValue, TKey): array $callback
+     * @param callable(TValue, TKey): array<mixed, mixed> $callback
      * @return static
      */
     public function mapWithKeys(callable $callback): static;
@@ -71,7 +73,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Map each item through a callback, then collapse the result one level.
      *
-     * @param callable(TValue, TKey): mixed $callback
+     * @param callable(TValue): mixed $callback
      * @return static
      */
     public function flatMap(callable $callback): static;
@@ -82,7 +84,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * Reduce the collection to a single value using a callback.
      *
      * @template TCarry
-     * @param callable(TCarry, TValue, TKey): TCarry $callback
+     * @param callable(TCarry, TValue): TCarry $callback
      * @param TCarry $initial
      * @return TCarry
      */

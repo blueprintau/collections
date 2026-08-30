@@ -9,6 +9,9 @@ use PHPUnit\Framework\TestCase;
 
 final class CollectionTest extends TestCase
 {
+    /**
+     * @return Collection<int, array{id: int, name: string, role: string}>
+     */
     private function users(): Collection
     {
         return new Collection([
