@@ -79,7 +79,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
             return new static();
         }
 
-        return new static(range(1, $number))->map($callback ?? fn ($i) => $i);
+        return (new static(range(1, $number)))->map($callback ?? fn ($i) => $i);
     }
 
     /**
