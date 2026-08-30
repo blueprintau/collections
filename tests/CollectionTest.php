@@ -112,10 +112,22 @@ final class CollectionTest extends TestCase
         $this->assertSame(['Alice'], $admins->pluck('name')->all());
     }
 
+    public function test_filter_receives_key(): void
+    {
+        $result = (new Collection(['a' => 1, 'b' => 2, 'c' => 3]))->filter(fn ($v, $k) => $k !== 'b');
+        $this->assertSame(['a' => 1, 'c' => 3], $result->all());
+    }
+
     public function test_map(): void
     {
         $upper = $this->users()->map(fn ($u) => strtoupper($u['name']));
         $this->assertSame(['ALICE', 'BOB', 'CAROL'], $upper->all());
+    }
+
+    public function test_map_receives_key(): void
+    {
+        $result = (new Collection(['a' => 1, 'b' => 2]))->map(fn ($v, $k) => $k . $v);
+        $this->assertSame(['a' => 'a1', 'b' => 'b2'], $result->all());
     }
 
     public function test_map_with_keys(): void
@@ -130,6 +142,12 @@ final class CollectionTest extends TestCase
         $this->assertSame([1, 2, 3, 4], $result->all());
     }
 
+    public function test_flat_map_receives_key(): void
+    {
+        $result = (new Collection(['a' => [1], 'b' => [2]]))->flatMap(fn ($arr, $k) => [$k => $arr[0]]);
+        $this->assertSame(['a' => 1, 'b' => 2], $result->all());
+    }
+
     public function test_collapse(): void
     {
         $this->assertSame([1, 2, 3, 4], (new Collection([[1, 2], [3, 4]]))->collapse()->all());
@@ -138,6 +156,12 @@ final class CollectionTest extends TestCase
     public function test_reduce(): void
     {
         $this->assertSame(10, (new Collection([1, 2, 3, 4]))->reduce(fn ($carry, $n) => $carry + $n, 0));
+    }
+
+    public function test_reduce_receives_key(): void
+    {
+        $result = (new Collection(['a' => 1, 'b' => 2]))->reduce(fn ($carry, $v, $k) => $carry . $k . $v, '');
+        $this->assertSame('a1b2', $result);
     }
 
     public function test_sum(): void

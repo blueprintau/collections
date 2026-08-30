@@ -1,4 +1,4 @@
-<!-- [![PHP Tests](https://github.com/blueprintau/collections/actions/workflows/tests.yml/badge.svg?branch=development)](https://github.com/blueprintau/collections/actions/workflows/tests.yml) -->
+[![PHP Tests](https://github.com/blueprintau/collections/actions/workflows/tests.yml/badge.svg)](https://github.com/blueprintau/collections/actions/workflows/tests.yml)
 [![Packagist](https://img.shields.io/packagist/v/blueprintau/collections.svg)](https://packagist.org/packages/blueprintau/collections)
 
 # BlueprintAU Collections
@@ -79,9 +79,15 @@ PHP **8.3 or newer**.
 ```bash
 composer install
 composer test          # PHPUnit
-composer analyse       # PHPStan (level 6)
+composer analyse       # PHPStan (level 8)
 composer security:audit  # dependency security advisories
 ```
+
+CI runs the test suite across PHP 8.3 / 8.4 / 8.5 (lowest and highest
+dependencies) on every push and pull request. Releases are cut from the
+**Release** workflow (Actions → Release), which takes a version tag, verifies
+it does not already exist, runs the full test suite, then creates the tag and
+GitHub Release.
 
 ## License
 

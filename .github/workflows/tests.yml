@@ -1,9 +1,11 @@
-name: Test
+name: PHP Tests
 
 on:
     push:
         branches: [main]
     pull_request:
+    workflow_call:
+    workflow_dispatch:
 
 jobs:
     test:
@@ -15,7 +17,7 @@ jobs:
                 php: ["8.3", "8.4", "8.5"]
                 dependencies: ["lowest", "highest"]
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
 
             - name: Setup PHP
               uses: shivammathur/setup-php@v2

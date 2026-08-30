@@ -123,14 +123,18 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Map each item through a callback, producing a new collection.
      *
-     * Keys are preserved.
+     * The callback receives the item and its key. Keys are preserved.
      *
-     * @param callable(TValue): mixed $callback
+     * @param callable(TValue, TKey): mixed $callback
      * @return static
      */
     public function map(callable $callback): static
     {
-        return new static(array_map($callback, $this->items));
+        $results = [];
+        foreach ($this->items as $key => $item) {
+            $results[$key] = $callback($item, $key);
+        }
+        return new static($results);
     }
 
     /**
@@ -138,12 +142,18 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * When no callback is given, truthy items are kept. Keys are preserved.
      *
-     * @param (callable(TValue): bool)|null $callback
+     * @param (callable(TValue, TKey): bool)|null $callback
      * @return static
      */
     public function filter(?callable $callback = null): static
     {
-        return new static(array_filter($this->items, $callback ?? fn ($v) => (bool) $v));
+        $results = [];
+        foreach ($this->items as $key => $item) {
+            if (($callback ?? fn ($v) => (bool) $v)($item, $key)) {
+                $results[$key] = $item;
+            }
+        }
+        return new static($results);
     }
 
     /**
@@ -231,7 +241,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Equivalent to `map($callback)->collapse()`.
      *
-     * @param callable(TValue): mixed $callback
+     * @param callable(TValue, TKey): mixed $callback
      * @return static
      */
     public function flatMap(callable $callback): static
@@ -262,16 +272,20 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Reduce the collection to a single value using a callback.
      *
-     * The callback receives the carry and the item.
+     * The callback receives the carry, the item, and the item's key.
      *
      * @template TCarry
-     * @param callable(TCarry, TValue): TCarry $callback
+     * @param callable(TCarry, TValue, TKey): TCarry $callback
      * @param TCarry $initial
      * @return TCarry
      */
     public function reduce(callable $callback, mixed $initial = null): mixed
     {
-        return array_reduce($this->items, $callback, $initial);
+        $carry = $initial;
+        foreach ($this->items as $key => $item) {
+            $carry = $callback($carry, $item, $key);
+        }
+        return $carry;
     }
 
     /**
