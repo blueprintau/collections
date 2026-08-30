@@ -3,7 +3,21 @@
     "description": "A pure, standalone array wrapper for BlueprintAU — generic Collection and Enumerable contract with no dependencies.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["collection", "array", "enumerable", "blueprintau"],
+    "keywords": [
+        "collection",
+        "array",
+        "enumerable",
+        "blueprintau"
+    ],
+    "support": {
+        "issues": "https://github.com/blueprintau/collections/issues",
+        "source": "https://github.com/blueprintau/collections"
+    },
+    "authors": [
+        {
+            "name": "Mineubob"
+        }
+    ],
     "require": {
         "php": "^8.1"
     },
@@ -22,6 +36,11 @@
     },
     "scripts": {
         "test": "phpunit"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.x-dev"
+        }
     },
     "config": {
         "sort-packages": true
