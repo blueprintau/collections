@@ -303,15 +303,41 @@ final class CollectionTest extends TestCase
         $this->assertSame('[1,2,3]', json_encode(new Collection([1, 2, 3])));
     }
 
-    public function test_array_access(): void
+    public function test_array_access_read(): void
     {
         $c = new Collection(['a' => 1, 'b' => 2]);
         $this->assertTrue(isset($c['a']));
         $this->assertSame(1, $c['a']);
-        $c['c'] = 3;
-        $this->assertSame(3, $c['c']);
+        $this->assertFalse(isset($c['missing']));
+        $this->assertNull($c['missing']);
+    }
+
+    public function test_array_access_null_value_is_present(): void
+    {
+        $c = new Collection(['a' => null]);
+        $this->assertTrue(isset($c['a']));
+        $this->assertNull($c['a']);
+    }
+
+    public function test_array_access_write_throws(): void
+    {
+        $c = new Collection(['a' => 1]);
+        $this->expectException(\BadMethodCallException::class);
+        $c['b'] = 2;
+    }
+
+    public function test_array_access_append_throws(): void
+    {
+        $c = new Collection([1, 2]);
+        $this->expectException(\BadMethodCallException::class);
+        $c[] = 3;
+    }
+
+    public function test_array_access_unset_throws(): void
+    {
+        $c = new Collection(['a' => 1]);
+        $this->expectException(\BadMethodCallException::class);
         unset($c['a']);
-        $this->assertFalse(isset($c['a']));
     }
 
     public function test_iteration(): void

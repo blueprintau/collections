@@ -19,9 +19,10 @@
         }
     ],
     "require": {
-        "php": "^8.1"
+        "php": "^8.3"
     },
     "require-dev": {
+        "phpstan/phpstan": "^2.0",
         "phpunit/phpunit": "^10.5"
     },
     "autoload": {
@@ -35,7 +36,9 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "analyse": "phpstan analyse --memory-limit=512M",
+        "audit": "composer audit --locked"
     },
     "extra": {
         "branch-alias": {

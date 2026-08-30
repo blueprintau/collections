@@ -666,12 +666,15 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Determine whether an item exists at the given offset.
      *
+     * Uses array_key_exists so that an item whose value is null still counts
+     * as present (isset() would report it as absent).
+     *
      * @param mixed $offset
      * @return bool
      */
     public function offsetExists(mixed $offset): bool
     {
-        return isset($this->items[$offset]);
+        return array_key_exists($offset, $this->items);
     }
 
     /**
@@ -686,30 +689,34 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     }
 
     /**
-     * Set the item at the given offset (or append when offset is null).
+     * Writing to a collection is not supported.
+     *
+     * Collections are immutable — use a transform (map, filter, etc.) to
+     * derive a new collection instead of mutating this one in place.
      *
      * @param mixed $offset
      * @param mixed $value
      * @return void
+     * @throws \BadMethodCallException Always.
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        if ($offset === null) {
-            $this->items[] = $value;
-        } else {
-            $this->items[$offset] = $value;
-        }
+        throw new \BadMethodCallException('Collection is immutable; use a transform instead.');
     }
 
     /**
-     * Remove the item at the given offset.
+     * Removing an item from a collection is not supported.
+     *
+     * Collections are immutable — use a transform (filter, etc.) to derive a
+     * new collection instead of mutating this one in place.
      *
      * @param mixed $offset
      * @return void
+     * @throws \BadMethodCallException Always.
      */
     public function offsetUnset(mixed $offset): void
     {
-        unset($this->items[$offset]);
+        throw new \BadMethodCallException('Collection is immutable; use a transform instead.');
     }
 
     /**

@@ -70,11 +70,17 @@ Only methods that behave identically whether the data is eagerly in memory or
 lazily streamed belong on the contract. Anything that forces materialization
 (`count`, `sort`, `unique`, `toArray`) stays on `Collection`.
 
+## Requirements
+
+PHP **8.3 or newer**.
+
 ## Testing
 
 ```bash
 composer install
-composer test
+composer test        # PHPUnit
+composer analyse     # PHPStan (level 8)
+composer audit       # dependency security advisories
 ```
 
 ## License
