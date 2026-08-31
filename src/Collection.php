@@ -24,9 +24,14 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     protected array $items = [];
 
     /**
+     * Create a new collection from the given items.
+     *
+     * The constructor is protected — use `make()` (or another factory) to
+     * create instances from outside the class.
+     *
      * @param iterable<TKey, TValue> $items
      */
-    public function __construct(iterable $items = [])
+    protected function __construct(iterable $items = [])
     {
         $this->items = is_array($items) ? $items : iterator_to_array($items);
     }

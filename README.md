@@ -23,7 +23,8 @@ composer require blueprintau/collections
 ```php
 use BlueprintAU\Collections\Collection;
 
-$users = new Collection([
+// Constructors are protected — create instances via the static factories.
+$users = Collection::make([
     ['id' => 1, 'name' => 'Alice', 'role' => 'admin'],
     ['id' => 2, 'name' => 'Bob',   'role' => 'user'],
     ['id' => 3, 'name' => 'Carol', 'role' => 'user'],
@@ -38,18 +39,18 @@ $upper  = $users->map(fn ($u) => strtoupper($u['name']));     // ['ALICE', 'BOB'
 
 // Reductions
 $count    = $users->count();                       // 3
-$total    = (new Collection([1, 2, 3, 4]))->sum(); // 10
-$avg      = (new Collection([1, 2, 3, 4]))->avg(); // 2.5
+$total    = Collection::make([1, 2, 3,  ̀4])->sum(); // 10
+$avg      = Collection::make([1, 2, 3, 4])->avg(); // 2.5
 $hasAdmin = $users->contains(fn ($u) => $u['role'] === 'admin');  // true
 
 // Selection
 $firstTwo = $users->take(2);                       // [Alice, Bob]
-$sorted   = (new Collection([
+$sorted   = Collection::make([
     ['name' => 'Carol'],
     ['name' => 'Alice'],
     ['name' => 'Bob'],
-]))->sortBy('name');                               // [Alice, Bob, Carol]
-$unique   = (new Collection([1, 1, 2, 3, 3]))->unique();  // [1, 2, 3]
+])->sortBy('name');                               // [Alice, Bob, Carol]
+$unique   = Collection::make([1, 1, 2,  ̀3,  ̀3])->unique();  // [1, 2, 3]
 
 // Iteration
 $users->each(fn ($u) => print($u['name'] . "\n")); // Alice Bob Carol
@@ -62,13 +63,43 @@ $json  = $users->toJson();                         // JSON string
 
 ## The `Enumerable` contract
 
-`Enumerable` is the contract both `Collection` and (later) `LazyCollection`
+`Enumerable` is the contract both `Collection` and `LazyCollection`
 implement. It extends `\IteratorAggregate` and `\JsonSerializable`, so any
 collection is `foreach`-able and `json_encode()`-able.
 
 Only methods that behave identically whether the data is eagerly in memory or
 lazily streamed belong on the contract. Anything that forces materialization
 (`count`, `sort`, `unique`, `toArray`) stays on `Collection`.
+
+## The `LazyCollection`
+
+`LazyCollection` is the lazy counterpart to `Collection`. Instead of holding
+items in memory, it streams them through a generator source on demand.
+
+- **Transforms are lazy** — `map`, `filter`, `pluck`, `take`, `skip`, `slice`,
+  and friends return a new `LazyCollection` that pulls from the previous one
+  only when iterated. This makes it possible to work with infinite or very
+  large sources without materializing them.
+- **Terminal operations materialize** — `toArray`, `count`, `toJson`, `all`,
+  `sort`, `sortBy`, `unique`, and `reverse` consume the stream.
+- **Re-iterable** — the source is stored as a factory closure, so each
+  iteration produces a fresh generator. Pass a callable source (e.g. a
+  generator function) to replay the stream; passing a raw `Generator` is
+  single-use.
+
+```php
+use BlueprintAU\Collections\LazyCollection;
+
+// An infinite sequence, safely truncated.
+$lazy = LazyCollection::make(function (): \Generator {
+    $i = 1;
+    while (true) {
+        yield $i++;
+    }
+});
+
+$firstFive = $lazy->take(5)->all(); // [1, 2, 3, 4, 5]
+```
 
 ## Requirements
 

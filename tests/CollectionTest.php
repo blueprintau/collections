@@ -15,7 +15,7 @@ final class CollectionTest extends TestCase
      */
     private function users(): Collection
     {
-        return new Collection([
+        return Collection::make([
             ['id' => 1, 'name' => 'Alice', 'role' => 'admin'],
             ['id' => 2, 'name' => 'Bob',   'role' => 'user'],
             ['id' => 3, 'name' => 'Carol', 'role' => 'user'],
@@ -24,7 +24,7 @@ final class CollectionTest extends TestCase
 
     public function test_construct_from_array(): void
     {
-        $this->assertSame([1, 2, 3], (new Collection([1, 2, 3]))->all());
+        $this->assertSame([1, 2, 3], (Collection::make([1, 2, 3]))->all());
     }
 
     public function test_construct_from_generator(): void
@@ -33,7 +33,7 @@ final class CollectionTest extends TestCase
             yield 1;
             yield 2;
         })();
-        $this->assertSame([1, 2], (new Collection($gen))->all());
+        $this->assertSame([1, 2], (Collection::make($gen))->all());
     }
 
     public function test_make(): void
@@ -43,7 +43,7 @@ final class CollectionTest extends TestCase
 
     public function test_wrap_collection_returns_same_instance(): void
     {
-        $c = new Collection([1, 2]);
+        $c = Collection::make([1, 2]);
         $this->assertSame($c, Collection::wrap($c));
     }
 
@@ -120,7 +120,7 @@ final class CollectionTest extends TestCase
 
     public function test_filter_receives_key(): void
     {
-        $result = (new Collection(['a' => 1, 'b' => 2, 'c' => 3]))->filter(fn ($v, $k) => $k !== 'b');
+        $result = (Collection::make(['a' => 1, 'b' => 2, 'c' => 3]))->filter(fn ($v, $k) => $k !== 'b');
         $this->assertSame(['a' => 1, 'c' => 3], $result->all());
     }
 
@@ -132,7 +132,7 @@ final class CollectionTest extends TestCase
 
     public function test_map_receives_key(): void
     {
-        $result = (new Collection(['a' => 1, 'b' => 2]))->map(fn ($v, $k) => $k . $v);
+        $result = (Collection::make(['a' => 1, 'b' => 2]))->map(fn ($v, $k) => $k . $v);
         $this->assertSame(['a' => 'a1', 'b' => 'b2'], $result->all());
     }
 
@@ -144,35 +144,35 @@ final class CollectionTest extends TestCase
 
     public function test_flat_map(): void
     {
-        $result = (new Collection([[1, 2], [3, 4]]))->flatMap(fn ($arr) => $arr);
+        $result = (Collection::make([[1, 2], [3, 4]]))->flatMap(fn ($arr) => $arr);
         $this->assertSame([1, 2, 3, 4], $result->all());
     }
 
     public function test_flat_map_receives_key(): void
     {
-        $result = (new Collection(['a' => [1], 'b' => [2]]))->flatMap(fn ($arr, $k) => [$k => $arr[0]]);
+        $result = (Collection::make(['a' => [1], 'b' => [2]]))->flatMap(fn ($arr, $k) => [$k => $arr[0]]);
         $this->assertSame(['a' => 1, 'b' => 2], $result->all());
     }
 
     public function test_collapse(): void
     {
-        $this->assertSame([1, 2, 3, 4], (new Collection([[1, 2], [3, 4]]))->collapse()->all());
+        $this->assertSame([1, 2, 3, 4], (Collection::make([[1, 2], [3, 4]]))->collapse()->all());
     }
 
     public function test_reduce(): void
     {
-        $this->assertSame(10, (new Collection([1, 2, 3, 4]))->reduce(fn ($carry, $n) => $carry + $n, 0));
+        $this->assertSame(10, (Collection::make([1, 2, 3, 4]))->reduce(fn ($carry, $n) => $carry + $n, 0));
     }
 
     public function test_reduce_receives_key(): void
     {
-        $result = (new Collection(['a' => 1, 'b' => 2]))->reduce(fn ($carry, $v, $k) => $carry . $k . $v, '');
+        $result = (Collection::make(['a' => 1, 'b' => 2]))->reduce(fn ($carry, $v, $k) => $carry . $k . $v, '');
         $this->assertSame('a1b2', $result);
     }
 
     public function test_sum(): void
     {
-        $this->assertSame(10, (new Collection([1, 2, 3, 4]))->sum());
+        $this->assertSame(10, (Collection::make([1, 2, 3, 4]))->sum());
     }
 
     public function test_sum_column(): void
@@ -187,18 +187,18 @@ final class CollectionTest extends TestCase
 
     public function test_avg(): void
     {
-        $this->assertSame(2.5, (new Collection([1, 2, 3, 4]))->avg());
+        $this->assertSame(2.5, (Collection::make([1, 2, 3, 4]))->avg());
     }
 
     public function test_avg_empty(): void
     {
-        $this->assertSame(0, (new Collection([]))->avg());
+        $this->assertSame(0, (Collection::make([]))->avg());
     }
 
     public function test_min_max(): void
     {
-        $this->assertSame(1, (new Collection([3, 1, 2]))->min());
-        $this->assertSame(3, (new Collection([3, 1, 2]))->max());
+        $this->assertSame(1, (Collection::make([3, 1, 2]))->min());
+        $this->assertSame(3, (Collection::make([3, 1, 2]))->max());
     }
 
     public function test_min_max_callable(): void
@@ -214,8 +214,8 @@ final class CollectionTest extends TestCase
 
     public function test_contains_value(): void
     {
-        $this->assertTrue((new Collection([1, 2, 3]))->contains(2));
-        $this->assertFalse((new Collection([1, 2, 3]))->contains(9));
+        $this->assertTrue((Collection::make([1, 2, 3]))->contains(2));
+        $this->assertFalse((Collection::make([1, 2, 3]))->contains(9));
     }
 
     public function test_contains_callback(): void
@@ -241,7 +241,7 @@ final class CollectionTest extends TestCase
 
     public function test_contains_equals_is_strict_loose_equals_is_loose(): void
     {
-        $items = new Collection([['id' => 1], ['id' => '1']]);
+        $items = Collection::make([['id' => 1], ['id' => '1']]);
         $this->assertTrue($items->contains('id', 1, ComparisonOperator::LooseEquals));
         $this->assertTrue($items->contains('id', '1', ComparisonOperator::LooseEquals));
         $this->assertTrue($items->contains('id', 1, ComparisonOperator::Equals));
@@ -263,14 +263,14 @@ final class CollectionTest extends TestCase
 
     public function test_every(): void
     {
-        $this->assertTrue((new Collection([2, 4, 6]))->every(fn ($n) => $n % 2 === 0));
-        $this->assertFalse((new Collection([2, 3, 6]))->every(fn ($n) => $n % 2 === 0));
+        $this->assertTrue((Collection::make([2, 4, 6]))->every(fn ($n) => $n % 2 === 0));
+        $this->assertFalse((Collection::make([2, 3, 6]))->every(fn ($n) => $n % 2 === 0));
     }
 
     public function test_some(): void
     {
-        $this->assertTrue((new Collection([1, 2, 3]))->some(fn ($n) => $n === 2));
-        $this->assertFalse((new Collection([1, 3, 5]))->some(fn ($n) => $n === 2));
+        $this->assertTrue((Collection::make([1, 2, 3]))->some(fn ($n) => $n === 2));
+        $this->assertFalse((Collection::make([1, 3, 5]))->some(fn ($n) => $n === 2));
     }
 
     public function test_each(): void
@@ -304,8 +304,8 @@ final class CollectionTest extends TestCase
 
     public function test_first_default(): void
     {
-        $this->assertNull((new Collection([]))->first());
-        $this->assertSame('fallback', (new Collection([]))->first(null, 'fallback'));
+        $this->assertNull((Collection::make([]))->first());
+        $this->assertSame('fallback', (Collection::make([]))->first(null, 'fallback'));
     }
 
     public function test_last(): void
@@ -320,7 +320,7 @@ final class CollectionTest extends TestCase
 
     public function test_last_null_value_is_not_absence(): void
     {
-        $this->assertNull((new Collection([null]))->last(null, 'fallback'));
+        $this->assertNull((Collection::make([null]))->last(null, 'fallback'));
     }
 
     public function test_values_keys(): void
@@ -338,12 +338,12 @@ final class CollectionTest extends TestCase
 
     public function test_unique(): void
     {
-        $this->assertSame([1, 2, 3], (new Collection([1, 1, 2, 3, 3]))->unique()->values()->all());
+        $this->assertSame([1, 2, 3], (Collection::make([1, 1, 2, 3, 3]))->unique()->values()->all());
     }
 
     public function test_unique_distinguishes_int_and_string(): void
     {
-        $this->assertCount(2, (new Collection([1, '1']))->unique());
+        $this->assertCount(2, (Collection::make([1, '1']))->unique());
     }
 
     public function test_unique_by_key(): void
@@ -354,7 +354,7 @@ final class CollectionTest extends TestCase
 
     public function test_unique_by_key_strict(): void
     {
-        $items = new Collection([
+        $items = Collection::make([
             ['id' => 1, 'tag' => 1],
             ['id' => 2, 'tag' => '1'],
         ]);
@@ -364,7 +364,7 @@ final class CollectionTest extends TestCase
 
     public function test_sort(): void
     {
-        $this->assertSame([1, 2, 3], (new Collection([3, 1, 2]))->sort()->values()->all());
+        $this->assertSame([1, 2, 3], (Collection::make([3, 1, 2]))->sort()->values()->all());
     }
 
     public function test_sort_by(): void
@@ -374,13 +374,13 @@ final class CollectionTest extends TestCase
 
     public function test_sort_by_numeric_default(): void
     {
-        $items = new Collection([['id' => 10], ['id' => 2], ['id' => 1]]);
+        $items = Collection::make([['id' => 10], ['id' => 2], ['id' => 1]]);
         $this->assertSame([1, 2, 10], $items->sortBy('id')->pluck('id')->all());
     }
 
     public function test_sort_by_numeric_descending(): void
     {
-        $items = new Collection([['id' => 10], ['id' => 2], ['id' => 1]]);
+        $items = Collection::make([['id' => 10], ['id' => 2], ['id' => 1]]);
         $this->assertSame([10, 2, 1], $items->sortBy('id', descending: true)->pluck('id')->all());
     }
 
@@ -396,23 +396,23 @@ final class CollectionTest extends TestCase
 
     public function test_to_array_recurses(): void
     {
-        $nested = new Collection([new Collection([1, 2])]);
+        $nested = Collection::make([Collection::make([1, 2])]);
         $this->assertSame([[1, 2]], $nested->toArray());
     }
 
     public function test_to_json(): void
     {
-        $this->assertSame('[1,2,3]', (new Collection([1, 2, 3]))->toJson());
+        $this->assertSame('[1,2,3]', (Collection::make([1, 2, 3]))->toJson());
     }
 
     public function test_json_serializable(): void
     {
-        $this->assertSame('[1,2,3]', json_encode(new Collection([1, 2, 3])));
+        $this->assertSame('[1,2,3]', json_encode(Collection::make([1, 2, 3])));
     }
 
     public function test_array_access_read(): void
     {
-        $c = new Collection(['a' => 1, 'b' => 2]);
+        $c = Collection::make(['a' => 1, 'b' => 2]);
         $this->assertTrue(isset($c['a']));
         $this->assertSame(1, $c['a']);
         $this->assertFalse(isset($c['missing']));
@@ -421,28 +421,28 @@ final class CollectionTest extends TestCase
 
     public function test_array_access_null_value_is_present(): void
     {
-        $c = new Collection(['a' => null]);
+        $c = Collection::make(['a' => null]);
         $this->assertTrue(isset($c['a']));
         $this->assertNull($c['a']);
     }
 
     public function test_array_access_write_throws(): void
     {
-        $c = new Collection(['a' => 1]);
+        $c = Collection::make(['a' => 1]);
         $this->expectException(\BadMethodCallException::class);
         $c['b'] = 2;
     }
 
     public function test_array_access_append_throws(): void
     {
-        $c = new Collection([1, 2]);
+        $c = Collection::make([1, 2]);
         $this->expectException(\BadMethodCallException::class);
         $c[] = 3;
     }
 
     public function test_array_access_unset_throws(): void
     {
-        $c = new Collection(['a' => 1]);
+        $c = Collection::make(['a' => 1]);
         $this->expectException(\BadMethodCallException::class);
         unset($c['a']);
     }
