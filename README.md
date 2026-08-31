@@ -84,8 +84,11 @@ items in memory, it streams them through a generator source on demand.
   `sort`, `sortBy`, `unique`, and `reverse` consume the stream.
 - **Re-iterable** — the source is stored as a factory closure, so each
   iteration produces a fresh generator. Pass a callable source (e.g. a
-  generator function) to replay the stream; passing a raw `Generator` is
-  single-use.
+  generator function) to replay the stream. Non-callable sources are wrapped
+  via `yield from`, which rewinds re-iterable iterators (e.g. `ArrayIterator`)
+  automatically. A raw `Generator` is single-use: iterating it twice throws
+  a "Cannot rewind a generator that was already run" exception rather than
+  silently returning wrong data.
 
 ```php
 use BlueprintAU\Collections\LazyCollection;
