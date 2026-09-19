@@ -133,7 +133,7 @@ class LazyCollection implements Enumerable
      *
      * @param TValue $item
      * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return mixed
+     * @return (TValue is array ? value-of<TValue> : mixed)
      */
     protected function value(mixed $item, int|string $key): mixed
     {
@@ -422,8 +422,9 @@ class LazyCollection implements Enumerable
      *
      * Returns null for an empty collection.
      *
-     * @param string|callable(TValue): mixed|null $column
-     * @return mixed
+     * @template TColumn
+     * @param string|callable(TValue): TColumn|null $column
+     * @return TColumn|TValue|null
      */
     public function min(string|callable|null $column = null): mixed
     {
@@ -446,8 +447,9 @@ class LazyCollection implements Enumerable
      *
      * Returns null for an empty collection.
      *
-     * @param string|callable(TValue): mixed|null $column
-     * @return mixed
+     * @template TColumn
+     * @param string|callable(TValue): TColumn|null $column
+     * @return TColumn|TValue|null
      */
     public function max(string|callable|null $column = null): mixed
     {
@@ -585,9 +587,10 @@ class LazyCollection implements Enumerable
      *
      * Returns the given default (or null) when nothing matches.
      *
+     * @template TDefault
      * @param (callable(TValue, TKey): bool)|null $callback
-     * @param mixed $default
-     * @return mixed
+     * @param TDefault $default
+     * @return TValue|TDefault
      */
     public function first(?callable $callback = null, mixed $default = null): mixed
     {
@@ -605,9 +608,10 @@ class LazyCollection implements Enumerable
      * Returns the given default (or null) when nothing matches. This consumes
      * the entire stream.
      *
+     * @template TDefault
      * @param (callable(TValue, TKey): bool)|null $callback
-     * @param mixed $default
-     * @return mixed
+     * @param TDefault $default
+     * @return TValue|TDefault
      */
     public function last(?callable $callback = null, mixed $default = null): mixed
     {

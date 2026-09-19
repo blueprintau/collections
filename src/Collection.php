@@ -114,9 +114,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * @param TValue $item
      * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return mixed
+     * @return (TValue is array ? value-of<TValue> : mixed)
      */
-    protected function value(mixed $item, int|string $key): mixed
+    final protected function value(mixed $item, int|string $key): mixed
     {
         if (is_array($item)) {
             return $item[$key] ?? null;
@@ -337,28 +337,24 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns null for an empty collection.
      *
-     * @param string|callable(TValue): mixed|null $column
-     * @return mixed
+     * @template TColumn
+     * @param string|callable(TValue): TColumn|null $column
+     * @return TColumn|TValue|null
      */
     public function min(string|callable|null $column = null): mixed
     {
-        if ($this->items === []) {
-            return null;
-        }
-        if ($column === null) {
-            return min($this->items);
-        }
-        if (is_callable($column)) {
-            $min = null;
-            foreach ($this->items as $item) {
-                $value = $column($item);
-                if ($min === null || $value < $min) {
-                    $min = $value;
-                }
+        $min = null;
+        $has = false;
+        foreach ($this->items as $item) {
+            $value = $column === null
+                ? $item
+                : (is_callable($column) ? $column($item) : $this->value($item, $column));
+            if (!$has || $value < $min) {
+                $min = $value;
+                $has = true;
             }
-            return $min;
         }
-        return $this->pluck($column)->min();
+        return $has ? $min : null;
     }
 
     /**
@@ -366,28 +362,24 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns null for an empty collection.
      *
-     * @param string|callable(TValue): mixed|null $column
-     * @return mixed
+     * @template TColumn
+     * @param string|callable(TValue): TColumn|null $column
+     * @return TColumn|TValue|null
      */
     public function max(string|callable|null $column = null): mixed
     {
-        if ($this->items === []) {
-            return null;
-        }
-        if ($column === null) {
-            return max($this->items);
-        }
-        if (is_callable($column)) {
-            $max = null;
-            foreach ($this->items as $item) {
-                $value = $column($item);
-                if ($max === null || $value > $max) {
-                    $max = $value;
-                }
+        $max = null;
+        $has = false;
+        foreach ($this->items as $item) {
+            $value = $column === null
+                ? $item
+                : (is_callable($column) ? $column($item) : $this->value($item, $column));
+            if (!$has || $value > $max) {
+                $max = $value;
+                $has = true;
             }
-            return $max;
         }
-        return $this->pluck($column)->max();
+        return $has ? $max : null;
     }
 
     /**
@@ -535,9 +527,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns the given default (or null) when nothing matches.
      *
+     * @template TDefault
      * @param (callable(TValue, TKey): bool)|null $callback
-     * @param mixed $default
-     * @return mixed
+     * @param TDefault $default
+     * @return TValue|TDefault
      */
     public function first(?callable $callback = null, mixed $default = null): mixed
     {
@@ -558,9 +551,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns the given default (or null) when nothing matches.
      *
+     * @template TDefault
      * @param (callable(TValue, TKey): bool)|null $callback
-     * @param mixed $default
-     * @return mixed
+     * @param TDefault $default
+     * @return TValue|TDefault
      */
     public function last(?callable $callback = null, mixed $default = null): mixed
     {
@@ -827,7 +821,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Get the item at the given offset, or null if it does not exist.
      *
      * @param mixed $offset
-     * @return mixed
+     * @return TValue|null
      */
     public function offsetGet(mixed $offset): mixed
     {

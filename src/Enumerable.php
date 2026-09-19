@@ -109,18 +109,22 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Get the minimum value, or the minimum of a single column.
      *
+     * Returns null for an empty collection.
+     *
      * @template TColumn
      * @param string|callable(TValue): TColumn|null $column
-     * @return TColumn|TValue
+     * @return TColumn|TValue|null
      */
     public function min(string|callable|null $column = null): mixed;
 
     /**
      * Get the maximum value, or the maximum of a single column.
      *
+     * Returns null for an empty collection.
+     *
      * @template TColumn
      * @param string|callable(TValue): TColumn|null $column
-     * @return TColumn|TValue
+     * @return TColumn|TValue|null
      */
     public function max(string|callable|null $column = null): mixed;
 
@@ -173,18 +177,20 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Get the first item, optionally the first matching a callback.
      *
+     * @template TDefault
      * @param (callable(TValue, TKey): bool)|null $callback
-     * @param mixed $default
-     * @return mixed
+     * @param TDefault $default
+     * @return TValue|TDefault
      */
     public function first(?callable $callback = null, mixed $default = null): mixed;
 
     /**
      * Get the last item, optionally the last matching a callback.
      *
+     * @template TDefault
      * @param (callable(TValue, TKey): bool)|null $callback
-     * @param mixed $default
-     * @return mixed
+     * @param TDefault $default
+     * @return TValue|TDefault
      */
     public function last(?callable $callback = null, mixed $default = null): mixed;
 

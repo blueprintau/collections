@@ -101,15 +101,15 @@ final class CollectionTest extends TestCase
     {
         $byId = $this->users()->keyBy('id');
         $this->assertSame([1, 2, 3], $byId->keys()->all());
-        $this->assertSame('Alice', $byId[1]['name']);
+        $this->assertSame('Alice', $byId[1]['name'] ?? null);
     }
 
     public function test_group_by(): void
     {
         $byRole = $this->users()->groupBy('role');
         $this->assertSame(['admin', 'user'], $byRole->keys()->all());
-        $this->assertCount(1, $byRole['admin']);
-        $this->assertCount(2, $byRole['user']);
+        $this->assertCount(1, $byRole['admin'] ?? []);
+        $this->assertCount(2, $byRole['user'] ?? []);
     }
 
     public function test_filter(): void
@@ -294,12 +294,12 @@ final class CollectionTest extends TestCase
 
     public function test_first(): void
     {
-        $this->assertSame('Alice', $this->users()->first()['name']);
+        $this->assertSame('Alice', $this->users()->first()['name'] ?? null);
     }
 
     public function test_first_with_callback(): void
     {
-        $this->assertSame('Bob', $this->users()->first(fn ($u) => $u['name'] === 'Bob')['name']);
+        $this->assertSame('Bob', $this->users()->first(fn ($u) => $u['name'] === 'Bob')['name'] ?? null);
     }
 
     public function test_first_default(): void
@@ -310,12 +310,12 @@ final class CollectionTest extends TestCase
 
     public function test_last(): void
     {
-        $this->assertSame('Carol', $this->users()->last()['name']);
+        $this->assertSame('Carol', $this->users()->last()['name'] ?? null);
     }
 
     public function test_last_with_callback(): void
     {
-        $this->assertSame('Carol', $this->users()->last(fn ($u) => $u['role'] === 'user')['name']);
+        $this->assertSame('Carol', $this->users()->last(fn ($u) => $u['role'] === 'user')['name'] ?? null);
     }
 
     public function test_last_null_value_is_not_absence(): void
@@ -464,6 +464,6 @@ final class CollectionTest extends TestCase
         // The transform returns a new collection; the original is untouched.
         $this->assertCount(1, $filtered);
         $this->assertCount(3, $original);
-        $this->assertSame('Alice', $original->first()['name']);
+        $this->assertSame('Alice', $original->first()['name'] ?? null);
     }
 }
