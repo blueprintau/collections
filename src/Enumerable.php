@@ -99,7 +99,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Sum the collection's values, or a single column of each item.
      *
-     * @param string|callable(TValue): mixed|null $column
+     * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
     public function sum(string|callable|null $column = null): int|float;
@@ -107,7 +107,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Average the collection's values, or a single column of each item.
      *
-     * @param string|callable(TValue): mixed|null $column
+     * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
     public function avg(string|callable|null $column = null): int|float;
@@ -118,8 +118,8 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * Returns null for an empty collection.
      *
      * @template TColumn
-     * @param string|callable(TValue): TColumn|null $column
-     * @return TColumn|TValue|null
+     * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
+     * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
     public function min(string|callable|null $column = null): mixed;
 
@@ -129,8 +129,8 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * Returns null for an empty collection.
      *
      * @template TColumn
-     * @param string|callable(TValue): TColumn|null $column
-     * @return TColumn|TValue|null
+     * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
+     * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
     public function max(string|callable|null $column = null): mixed;
 
@@ -147,7 +147,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Filter the collection to items whose column matches a value.
      *
-     * @param mixed $key
+     * @param (TValue is array ? key-of<TValue> : string) $key
      * @param mixed $value
      * @param ComparisonOperator $operator
      * @return static

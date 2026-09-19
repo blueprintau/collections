@@ -387,7 +387,7 @@ class LazyCollection implements Enumerable
     /**
      * Sum the collection's values, or a single column of each item.
      *
-     * @param string|callable(TValue): mixed|null $column
+     * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
     public function sum(string|callable|null $column = null): int|float
@@ -414,7 +414,7 @@ class LazyCollection implements Enumerable
      *
      * Returns 0 for an empty collection.
      *
-     * @param string|callable(TValue): mixed|null $column
+     * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
     public function avg(string|callable|null $column = null): int|float
@@ -429,8 +429,8 @@ class LazyCollection implements Enumerable
      * Returns null for an empty collection.
      *
      * @template TColumn
-     * @param string|callable(TValue): TColumn|null $column
-     * @return TColumn|TValue|null
+     * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
+     * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
     public function min(string|callable|null $column = null): mixed
     {
@@ -454,8 +454,8 @@ class LazyCollection implements Enumerable
      * Returns null for an empty collection.
      *
      * @template TColumn
-     * @param string|callable(TValue): TColumn|null $column
-     * @return TColumn|TValue|null
+     * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
+     * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
     public function max(string|callable|null $column = null): mixed
     {
@@ -523,7 +523,7 @@ class LazyCollection implements Enumerable
      * compares against `$value` using the given operator (defaulting to loose
      * equality). Keys are preserved.
      *
-     * @param mixed $key
+     * @param (TValue is array ? key-of<TValue> : string) $key
      * @param mixed $value
      * @param ComparisonOperator $operator
      * @return static
