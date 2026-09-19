@@ -212,8 +212,9 @@ class LazyCollection implements Enumerable
      *
      * The callback receives the item and its key. Keys are preserved.
      *
-     * @param callable(TValue, TKey): mixed $callback
-     * @return static
+     * @template TNewValue
+     * @param callable(TValue, TKey): TNewValue $callback
+     * @return static<TKey, TNewValue>
      */
     public function map(callable $callback): static
     {
@@ -251,7 +252,7 @@ class LazyCollection implements Enumerable
      *
      * @param (TValue is array ? key-of<TValue> : string) $value
      * @param ((TValue is array ? key-of<TValue> : string)|null) $key
-     * @return static
+     * @return static<($key is null ? int : int|string), (TValue is array ? value-of<TValue> : mixed)>
      */
     public function pluck(int|string $value, int|string|null $key = null): static
     {
@@ -273,7 +274,7 @@ class LazyCollection implements Enumerable
      * Later items with a duplicate key overwrite earlier ones.
      *
      * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return static
+     * @return static<int|string, TValue>
      */
     public function keyBy(int|string $key): static
     {
@@ -309,8 +310,10 @@ class LazyCollection implements Enumerable
      *
      * The callback must return an array; later keys overwrite earlier ones.
      *
-     * @param callable(TValue, TKey): array<mixed, mixed> $callback
-     * @return static
+     * @template TMapKey of array-key
+     * @template TMapValue
+     * @param callable(TValue, TKey): array<TMapKey, TMapValue> $callback
+     * @return static<TMapKey, TMapValue>
      */
     public function mapWithKeys(callable $callback): static
     {
@@ -327,10 +330,12 @@ class LazyCollection implements Enumerable
     /**
      * Map each item through a callback, then collapse the result one level.
      *
-     * Equivalent to `map($callback)->collapse()`.
+     * Equivalent to `map($callback)->collapse()`. String keys survive the
+     * collapse and integer keys are renumbered, so the resulting key type is
+     * int|string.
      *
      * @param callable(TValue, TKey): mixed $callback
-     * @return static
+     * @return static<int|string, mixed>
      */
     public function flatMap(callable $callback): static
     {
@@ -340,9 +345,10 @@ class LazyCollection implements Enumerable
     /**
      * Collapse a collection of arrays into a single flat collection.
      *
-     * Non-array items are skipped.
+     * Non-array items are skipped. Integer keys are renumbered by the merge
+     * and string keys are preserved, so the resulting key type is int|string.
      *
-     * @return static
+     * @return static<int|string, (TValue is array ? value-of<TValue> : mixed)>
      */
     public function collapse(): static
     {
@@ -627,7 +633,7 @@ class LazyCollection implements Enumerable
     /**
      * Reset the collection's keys to a sequential 0-based list.
      *
-     * @return static
+     * @return static<int, TValue>
      */
     public function values(): static
     {
@@ -641,7 +647,7 @@ class LazyCollection implements Enumerable
     /**
      * Get the collection's keys as a new collection.
      *
-     * @return static
+     * @return static<int, TKey>
      */
     public function keys(): static
     {

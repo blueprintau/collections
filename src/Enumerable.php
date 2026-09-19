@@ -24,8 +24,9 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Map each item through a callback, producing a new collection.
      *
-     * @param callable(TValue, TKey): mixed $callback
-     * @return static
+     * @template TNewValue
+     * @param callable(TValue, TKey): TNewValue $callback
+     * @return static<TKey, TNewValue>
      */
     public function map(callable $callback): static;
 
@@ -42,7 +43,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      *
      * @param (TValue is array ? key-of<TValue> : string) $value
      * @param ((TValue is array ? key-of<TValue> : string)|null) $key
-     * @return static
+     * @return static<($key is null ? int : int|string), (TValue is array ? value-of<TValue> : mixed)>
      */
     public function pluck(int|string $value, int|string|null $key = null): static;
 
@@ -50,7 +51,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * Re-key the collection by a given column's value.
      *
      * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return static
+     * @return static<int|string, TValue>
      */
     public function keyBy(int|string $key): static;
 
@@ -65,16 +66,21 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Map each item to an associative array and merge the results.
      *
-     * @param callable(TValue, TKey): array<mixed, mixed> $callback
-     * @return static
+     * @template TMapKey of array-key
+     * @template TMapValue
+     * @param callable(TValue, TKey): array<TMapKey, TMapValue> $callback
+     * @return static<TMapKey, TMapValue>
      */
     public function mapWithKeys(callable $callback): static;
 
     /**
      * Map each item through a callback, then collapse the result one level.
      *
+     * The callback may return any array; string keys survive the collapse and
+     * integer keys are renumbered, so the resulting key type is int|string.
+     *
      * @param callable(TValue, TKey): mixed $callback
-     * @return static
+     * @return static<int|string, mixed>
      */
     public function flatMap(callable $callback): static;
 
@@ -197,14 +203,14 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Reset the collection's keys to a sequential 0-based list.
      *
-     * @return static
+     * @return static<int, TValue>
      */
     public function values(): static;
 
     /**
      * Get the collection's keys as a new collection.
      *
-     * @return static
+     * @return static<int, TKey>
      */
     public function keys(): static;
 

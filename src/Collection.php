@@ -134,8 +134,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * The callback receives the item and its key. Keys are preserved.
      *
-     * @param callable(TValue, TKey): mixed $callback
-     * @return static
+     * @template TNewValue
+     * @param callable(TValue, TKey): TNewValue $callback
+     * @return static<TKey, TNewValue>
      */
     public function map(callable $callback): static
     {
@@ -173,7 +174,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * @param (TValue is array ? key-of<TValue> : string) $value
      * @param ((TValue is array ? key-of<TValue> : string)|null) $key
-     * @return static
+     * @return static<($key is null ? int : int|string), (TValue is array ? value-of<TValue> : mixed)>
      */
     public function pluck(int|string $value, int|string|null $key = null): static
     {
@@ -195,7 +196,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Later items with a duplicate key overwrite earlier ones.
      *
      * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return static
+     * @return static<int|string, TValue>
      */
     public function keyBy(int|string $key): static
     {
@@ -230,8 +231,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * The callback must return an array; later keys overwrite earlier ones.
      *
-     * @param callable(TValue, TKey): array<mixed, mixed> $callback
-     * @return static
+     * @template TMapKey of array-key
+     * @template TMapValue
+     * @param callable(TValue, TKey): array<TMapKey, TMapValue> $callback
+     * @return static<TMapKey, TMapValue>
      */
     public function mapWithKeys(callable $callback): static
     {
@@ -248,10 +251,12 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Map each item through a callback, then collapse the result one level.
      *
-     * Equivalent to `map($callback)->collapse()`.
+     * Equivalent to `map($callback)->collapse()`. String keys survive the
+     * collapse and integer keys are renumbered, so the resulting key type is
+     * int|string.
      *
      * @param callable(TValue, TKey): mixed $callback
-     * @return static
+     * @return static<int|string, mixed>
      */
     public function flatMap(callable $callback): static
     {
@@ -261,9 +266,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Collapse a collection of arrays into a single flat collection.
      *
-     * Non-array items are skipped.
+     * Non-array items are skipped. Integer keys are renumbered by the merge
+     * and string keys are preserved, so the resulting key type is int|string.
      *
-     * @return static
+     * @return static<int|string, (TValue is array ? value-of<TValue> : mixed)>
      */
     public function collapse(): static
     {
