@@ -102,7 +102,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
-    public function sum(string|callable|null $column = null): int|float;
+    public function sum(int|string|callable|null $column = null): int|float;
 
     /**
      * Average the collection's values, or a single column of each item.
@@ -110,7 +110,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
-    public function avg(string|callable|null $column = null): int|float;
+    public function avg(int|string|callable|null $column = null): int|float;
 
     /**
      * Get the minimum value, or the minimum of a single column.
@@ -121,7 +121,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
      * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
-    public function min(string|callable|null $column = null): mixed;
+    public function min(int|string|callable|null $column = null): mixed;
 
     /**
      * Get the maximum value, or the maximum of a single column.
@@ -132,7 +132,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
      * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
-    public function max(string|callable|null $column = null): mixed;
+    public function max(int|string|callable|null $column = null): mixed;
 
     /**
      * Determine whether the collection contains a given item.

@@ -309,7 +309,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
-    public function sum(string|callable|null $column = null): int|float
+    public function sum(int|string|callable|null $column = null): int|float
     {
         if ($column === null) {
             return array_sum($this->items);
@@ -332,7 +332,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
-    public function avg(string|callable|null $column = null): int|float
+    public function avg(int|string|callable|null $column = null): int|float
     {
         $count = $this->count();
         return $count ? $this->sum($column) / $count : 0;
@@ -347,7 +347,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
      * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
-    public function min(string|callable|null $column = null): mixed
+    public function min(int|string|callable|null $column = null): mixed
     {
         $min = null;
         $has = false;
@@ -372,7 +372,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
      * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
-    public function max(string|callable|null $column = null): mixed
+    public function max(int|string|callable|null $column = null): mixed
     {
         $max = null;
         $has = false;
