@@ -220,8 +220,11 @@ final class CollectionTest extends TestCase
 
     public function test_contains_callback(): void
     {
-        $this->assertTrue($this->users()->contains(fn ($u) => $u['role'] === 'admin'));
-        $this->assertFalse($this->users()->contains(fn ($u) => $u['role'] === 'superuser'));
+        // contains() is value-only: a Closure is checked as a value, never
+        // invoked as a predicate. Predicates go through some().
+        $closure = fn ($u) => $u['role'] === 'admin';
+        $this->assertFalse($this->users()->contains($closure));
+        $this->assertTrue($this->users()->some($closure));
     }
 
     public function test_contains_operator(): void

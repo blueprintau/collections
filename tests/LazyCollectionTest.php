@@ -266,7 +266,11 @@ final class LazyCollectionTest extends TestCase
 
     public function test_contains_callable(): void
     {
-        $this->assertTrue((LazyCollection::make([1, 2, 3]))->contains(fn ($n) => $n === 2));
+        // contains() is value-only: a Closure is checked as a value, never
+        // invoked as a predicate. Predicates go through some().
+        $closure = fn ($n) => $n === 2;
+        $this->assertFalse((LazyCollection::make([1, 2, 3]))->contains($closure));
+        $this->assertTrue((LazyCollection::make([1, 2, 3]))->some($closure));
     }
 
     public function test_contains_column(): void

@@ -105,6 +105,35 @@ $lazy = LazyCollection::make(function (): \Generator {
 $firstFive = $lazy->take(5)->all(); // [1, 2, 3, 4, 5]
 ```
 
+### Memory and concurrency contracts
+
+- **Memory model** — transforms are O(1) memory: each item is pulled,
+  processed, and released. Operations that inherently need the whole stream
+  accumulate internally: `count`, `sort`, `sortBy`, `reverse`, `toArray`,
+  `toJson`, `all`, `groupBy`, and `unique` (which keeps a "seen" set that
+  grows with the number of distinct values). `take`/`skip`/`slice` with
+  negative arguments must reach the end of the stream and materialize
+  internally. On an infinite source, any accumulating operation will run
+  forever or exhaust memory — there is no guard; prefer `take()` to bound
+  infinite streams before applying terminal operations.
+- **Concurrency model** — a `LazyCollection` is not safe for concurrent
+  iteration. Each `getIterator()` call produces a fresh generator from the
+  source factory, but two consumers iterating the *same* underlying
+  single-use source (e.g. a shared raw `Generator`, a socket, a cursor) will
+  silently split its items between them — each item goes to exactly one
+  consumer, with no error. This applies through transforms too: a mapped or
+  filtered view shares the parent's source. Iterate a `LazyCollection` from
+  one consumer at a time, or wrap a shared source in a caching layer before
+  handing it to multiple consumers.
+- **Immutability** — `Collection` is immutable: writes through `ArrayAccess`
+  (`$collection[$k] = $v`, `unset($collection[$k])`) throw a
+  `BadMethodCallException`. Transforms return new instances. Note that
+  immutability is shallow: the collection never mutates its own structure,
+  but mutable *elements* (objects, arrays) are shared by reference between
+  the original and derived collections — mutating an element mutates it
+  everywhere. Subclasses that add mutable state must preserve the
+  transform-immutability contract themselves.
+
 ## Requirements
 
 PHP **8.4 or newer**.

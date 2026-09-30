@@ -112,6 +112,12 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * key/property (no error). This is the package's own data_get equivalent,
      * since the package has no dependencies.
      *
+     * For objects, `$item->{$key}` dispatches magic methods: a missing
+     * property triggers `__get()` (and possibly `__isset()`), which may run
+     * arbitrary consumer code or have side effects. Plain property access is
+     * used for real properties; only genuinely missing properties fall
+     * through to the magic path.
+     *
      * @param TValue $item
      * @param (TValue is array ? key-of<TValue> : string) $key
      * @return (TValue is array ? value-of<TValue> : mixed)
@@ -306,13 +312,22 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Sum the collection's values, or a single column of each item.
      *
+     * Non-numeric items throw a TypeError — the same behavior as the lazy
+     * implementation, so eager and lazy collections agree. (PHP's
+     * `array_sum` would warn and return 0 for non-numeric values; that
+     * silently-wrong result is deliberately not used here.)
+     *
      * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
      * @return int|float
      */
     public function sum(int|string|callable|null $column = null): int|float
     {
         if ($column === null) {
-            return array_sum($this->items);
+            $sum = 0;
+            foreach ($this->items as $item) {
+                $sum += $item;
+            }
+            return $sum;
         }
         if (is_callable($column)) {
             $sum = 0;
@@ -343,6 +358,12 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns null for an empty collection.
      *
+     * Comparison uses PHP's `<` operator, which assumes homogeneous,
+     * comparable values. On heterogeneous collections (e.g. mixed strings
+     * and arrays, or objects without comparison semantics) the result may be
+     * silently wrong rather than an error — normalize or map to a comparable
+     * column first when the item types vary.
+     *
      * @template TColumn
      * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
      * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
@@ -367,6 +388,12 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Get the maximum value, or the maximum of a single column.
      *
      * Returns null for an empty collection.
+     *
+     * Comparison uses PHP's `>` operator, which assumes homogeneous,
+     * comparable values. On heterogeneous collections (e.g. mixed strings
+     * and arrays, or objects without comparison semantics) the result may be
+     * silently wrong rather than an error — normalize or map to a comparable
+     * column first when the item types vary.
      *
      * @template TColumn
      * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
@@ -401,76 +428,56 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Determine whether the collection contains a given item.
      *
-     * Supports three call signatures:
+     * Supports two call signatures:
      *  - contains($value)          — strict value membership
-     *  - contains(callable)        — any item passes the predicate
      *  - contains($key, $value) / contains($key, $value, $operator)
      *                              — comparison of a column against a value
      *
-     * The column form compares `value($item, $key)` against `$value` using the
-     * given operator (defaulting to loose equality). The operator is a
-     * `ComparisonOperator` enum, so an invalid operator is a compile-time error
-     * rather than a silently-wrong result.
+     * The single-argument form is always strict value membership — a value
+     * that happens to be callable (e.g. the string 'strlen' or a Closure) is
+     * checked as a value, never invoked as a predicate. Use `some()` for
+     * predicate-based search.
+     *
+     * The column form compares `value($item, $key)` against `$value` using
+     * the given operator (defaulting to strict equality). The operator is a
+     * `ComparisonOperator` enum whose `compare()` method owns the semantics,
+     * so an invalid operator is a compile-time error rather than a
+     * silently-wrong result.
      *
      * @param mixed $key
      * @param mixed $value
      * @param ComparisonOperator $operator
      * @return bool
      */
-    public function contains(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::LooseEquals): bool
+    public function contains(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): bool
     {
         if (func_num_args() === 1) {
-            if (is_callable($key)) {
-                return $this->some($key);
-            }
             return in_array($key, $this->items, true);
         }
 
-        return $this->contains(fn ($item) => $this->compare($this->value($item, $key), $operator, $value));
-    }
-
-    /**
-     * Compare a column value against a target using a comparison operator.
-     *
-     * The match is exhaustive over `ComparisonOperator`, so every case is
-     * handled explicitly and there is no silent fallback. `Equals` is strict
-     * (`===`); `LooseEquals` is loose (`==`).
-     *
-     * @param mixed $actual
-     * @param ComparisonOperator $operator
-     * @param mixed $value
-     * @return bool
-     */
-    protected function compare(mixed $actual, ComparisonOperator $operator, mixed $value): bool
-    {
-        return match ($operator) {
-            ComparisonOperator::Equals => $actual === $value,
-            ComparisonOperator::LooseEquals => $actual == $value,
-            ComparisonOperator::NotEquals => $actual != $value,
-            ComparisonOperator::GreaterThan => $actual > $value,
-            ComparisonOperator::GreaterThanOrEqual => $actual >= $value,
-            ComparisonOperator::LessThan => $actual < $value,
-            ComparisonOperator::LessThanOrEqual => $actual <= $value,
-            ComparisonOperator::In => is_array($value) && in_array($actual, $value, true),
-            ComparisonOperator::NotIn => is_array($value) && !in_array($actual, $value, true),
-        };
+        return $this->some(fn ($item) => $operator->compare($this->value($item, $key), $value));
     }
 
     /**
      * Filter the collection to items whose column matches a value.
      *
      * Returns a new collection of the items where `value($item, $key)`
-     * compares against `$value` using the given operator (defaulting to loose
-     * equality). Keys are preserved.
+     * compares against `$value` using the given operator (defaulting to
+     * strict equality). Keys are preserved.
+     *
+     * Note: this operates on *columns of items*. On a collection of scalar
+     * items, `value()` returns null for every item, so the filter keeps
+     * nothing (or everything, for NotEquals/NotIn) — use `filter()` with a
+     * predicate for scalar collections.
      *
      * @param (TValue is array ? key-of<TValue> : string) $key
      * @param mixed $value
      * @param ComparisonOperator $operator
      * @return static
      */
-    public function where(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::LooseEquals): static
+    public function where(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): static
     {
-        return $this->filter(fn ($item) => $this->compare($this->value($item, $key), $operator, $value));
+        return $this->filter(fn ($item) => $operator->compare($this->value($item, $key), $value));
     }
 
     /**
@@ -601,27 +608,40 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Take the first N items.
      *
+     * Mirrors `array_slice($items, 0, $limit, true)`: a negative $limit omits
+     * the last |$limit| items. Original keys are always preserved — call
+     * `values()` to renumber to a 0-based list.
+     *
      * @param int $limit
      * @return static
      */
     public function take(int $limit): static
     {
-        return new static(array_slice($this->items, 0, $limit));
+        return new static(array_slice($this->items, 0, $limit, true));
     }
 
     /**
      * Skip the first N items.
+     *
+     * Mirrors `array_slice($items, $count, null, true)`: a negative $count
+     * keeps only the last |$count| items. Original keys are always preserved
+     * — call `values()` to renumber to a 0-based list.
      *
      * @param int $count
      * @return static
      */
     public function skip(int $count): static
     {
-        return new static(array_slice($this->items, $count));
+        return new static(array_slice($this->items, $count, null, true));
     }
 
     /**
      * Take a slice of the collection starting at the given offset.
+     *
+     * Mirrors `array_slice($items, $offset, $length, true)`: a negative
+     * $offset counts from the end of the collection and a negative $length
+     * stops that many items before the end. Original keys are always
+     * preserved — call `values()` to renumber to a 0-based list.
      *
      * @param int $offset
      * @param int|null $length
@@ -629,7 +649,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      */
     public function slice(int $offset, ?int $length = null): static
     {
-        return new static(array_slice($this->items, $offset, $length));
+        return new static(array_slice($this->items, $offset, $length, true));
     }
 
     /**
@@ -638,6 +658,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * When a key is given, items are deduplicated by that column's value
      * (keeping the first occurrence). When strict is true, values are
      * compared with type checking.
+     *
+     * Note: when no key is given, dedup is always strict (type-aware) and
+     * the $strict flag is ignored — loose dedup of raw values would silently
+     * merge `1` and `'1'`. The flag only applies to column-based dedup.
      *
      * @param string|null $key
      * @param bool $strict
@@ -664,10 +688,11 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Determine whether a value has already been seen, tracking it if not.
      *
-     * Uses an O(1) hash lookup for scalar values; falls back to a linear scan
-     * for non-scalar values (arrays/objects) that cannot be used as array keys.
-     * In strict mode the hash key is type-prefixed so that `1` and `'1'` are
-     * treated as distinct.
+     * Uses an O(1) hash lookup for all values: scalars are keyed by their
+     * string form (type-prefixed in strict mode so that `1` and `'1'` are
+     * distinct), arrays by a hash of their serialization, and objects by
+     * `spl_object_id` (identity — two separate instances with equal
+     * properties are treated as distinct).
      *
      * @param mixed $value
      * @param array<int|string, mixed> $seen
@@ -680,18 +705,19 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
             $key = $strict
                 ? get_debug_type($value) . ':' . (string) $value
                 : (string) $value;
-            if (array_key_exists($key, $seen)) {
-                return true;
-            }
-            $seen[$key] = true;
-            return false;
+        } elseif (is_object($value)) {
+            $key = 'o' . spl_object_id($value);
+        } else {
+            // Arrays (and any other non-scalar): hash the serialization.
+            // serialize() preserves order and types, so equal arrays hash
+            // equally — a close approximation of loose == for arrays.
+            $key = 'a' . md5(serialize($value));
         }
-        foreach ($seen as $existing) {
-            if ($strict ? $existing === $value : $existing == $value) {
-                return true;
-            }
+
+        if (array_key_exists($key, $seen)) {
+            return true;
         }
-        $seen[] = $value;
+        $seen[$key] = true;
         return false;
     }
 
@@ -721,6 +747,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *  - SORT_REGULAR (default) — numeric-aware when both values are numeric,
      *    otherwise lexical
      *
+     * Implemented as decorate-sort-undecorate: the extraction callback runs
+     * exactly once per item (O(n) invocations), not once per comparison.
+     *
      * @param string|callable(TValue): mixed $column
      * @param int $options
      * @param bool $descending
@@ -728,11 +757,17 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      */
     public function sortBy(string|callable $column, int $options = SORT_REGULAR, bool $descending = false): static
     {
-        $results = $this->items;
         $callback = is_callable($column) ? $column : fn ($item) => $this->value($item, $column);
-        uasort($results, function ($a, $b) use ($callback, $options, $descending) {
-            $aVal = $callback($a);
-            $bVal = $callback($b);
+
+        // Decorate: [sortKey, originalKey, item].
+        $decorated = [];
+        foreach ($this->items as $key => $item) {
+            $decorated[] = [$callback($item), $key, $item];
+        }
+
+        usort($decorated, function ($a, $b) use ($options, $descending) {
+            $aVal = $a[0];
+            $bVal = $b[0];
             $cmp = match ($options) {
                 SORT_NUMERIC => $aVal <=> $bVal,
                 SORT_STRING => strcmp((string) $aVal, (string) $bVal),
@@ -740,8 +775,19 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
                     ? $aVal <=> $bVal
                     : strcmp((string) $aVal, (string) $bVal),
             };
-            return $descending ? -$cmp : $cmp;
+            if ($cmp !== 0) {
+                return $descending ? -$cmp : $cmp;
+            }
+            // Stable tie-break on the original key so equal sort keys keep
+            // their original relative order (uasort/usort are not stable).
+            return $a[1] <=> $b[1];
         });
+
+        // Undecorate, preserving original keys.
+        $results = [];
+        foreach ($decorated as [, $key, $item]) {
+            $results[$key] = $item;
+        }
         return new static($results);
     }
 

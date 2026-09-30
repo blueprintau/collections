@@ -137,12 +137,16 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Determine whether the collection contains a given item.
      *
+     * The single-argument form is always strict value membership — callable
+     * values are checked as values, never invoked as predicates. Use
+     * `some()` for predicate-based search.
+     *
      * @param mixed $key
      * @param mixed $value
      * @param ComparisonOperator $operator
      * @return bool
      */
-    public function contains(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::LooseEquals): bool;
+    public function contains(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): bool;
 
     /**
      * Filter the collection to items whose column matches a value.
@@ -152,7 +156,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * @param ComparisonOperator $operator
      * @return static
      */
-    public function where(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::LooseEquals): static;
+    public function where(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): static;
 
     /**
      * Determine whether every item passes the given callback.
