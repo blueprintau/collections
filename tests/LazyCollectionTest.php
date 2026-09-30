@@ -455,4 +455,93 @@ final class LazyCollectionTest extends TestCase
         }
         $this->assertSame([1, 2, 3], $result);
     }
+
+    public function test_range_zero_step_returns_empty(): void
+    {
+        $this->assertSame([], LazyCollection::range(1, 10, 0)->all());
+    }
+
+    public function test_pluck_on_objects(): void
+    {
+        $items = LazyCollection::make([
+            (object) ['id' => 1, 'name' => 'Alice'],
+            (object) ['id' => 2, 'name' => 'Bob'],
+        ]);
+        $this->assertSame(['Alice', 'Bob'], $items->pluck('name')->all());
+    }
+
+    public function test_pluck_on_scalars_returns_nulls(): void
+    {
+        $this->assertSame([null, null], LazyCollection::make([1, 2])->pluck('x')->all());
+    }
+
+    public function test_where_with_comparison_operators(): void
+    {
+        $this->assertSame(
+            ['Bob', 'Carol'],
+            $this->users()->where('id', 1, ComparisonOperator::GreaterThan)->pluck('name')->values()->all()
+        );
+        $this->assertSame(
+            ['Bob', 'Carol'],
+            $this->users()->where('id', 2, ComparisonOperator::GreaterThanOrEqual)->pluck('name')->values()->all()
+        );
+        $this->assertSame(
+            ['Alice'],
+            $this->users()->where('id', 2, ComparisonOperator::LessThan)->pluck('name')->values()->all()
+        );
+        $this->assertSame(
+            ['Alice', 'Bob'],
+            $this->users()->where('id', 2, ComparisonOperator::LessThanOrEqual)->pluck('name')->values()->all()
+        );
+        $this->assertSame(
+            ['Carol'],
+            $this->users()->where('id', [1, 2], ComparisonOperator::NotIn)->pluck('name')->values()->all()
+        );
+    }
+
+    public function test_sum_with_callable(): void
+    {
+        $items = LazyCollection::make([['n' => 1], ['n' => 2], ['n' => 3]]);
+        $this->assertSame(6, $items->sum(fn ($i) => $i['n']));
+    }
+
+    public function test_min_max_with_callable(): void
+    {
+        $items = LazyCollection::make([['n' => 5], ['n' => 2], ['n' => 8]]);
+        $this->assertSame(2, $items->min(fn ($i) => $i['n']));
+        $this->assertSame(8, $items->max(fn ($i) => $i['n']));
+    }
+
+    public function test_sort_by_with_sort_options(): void
+    {
+        $items = LazyCollection::make([['id' => 10], ['id' => 2], ['id' => 1]]);
+        $this->assertSame([1, 2, 10], $items->sortBy('id', SORT_NUMERIC)->pluck('id')->values()->all());
+        // SORT_REGULAR compares numerically when both values are numeric.
+        $this->assertSame([1, 2, 10], $items->sortBy('id')->pluck('id')->values()->all());
+        $this->assertSame(
+            ['Alice', 'Bob', 'Carol'],
+            $this->users()->sortBy('name', SORT_STRING)->pluck('name')->values()->all()
+        );
+        // SORT_REGULAR falls back to lexical comparison for non-numeric values.
+        $this->assertSame(
+            ['Alice', 'Bob', 'Carol'],
+            $this->users()->sortBy('name')->pluck('name')->values()->all()
+        );
+    }
+
+    public function test_unique_with_array_items_strict(): void
+    {
+        $items = LazyCollection::make([[1, 2], [1, 2], [3]]);
+        $this->assertCount(2, $items->unique()->values()->all());
+    }
+
+    public function test_unique_by_key_loose_with_array_values(): void
+    {
+        $items = LazyCollection::make([
+            ['tags' => [1, 2]],
+            ['tags' => [1, 2]],
+            ['tags' => [3]],
+        ]);
+        $this->assertCount(2, $items->unique('tags')->values()->all());
+    }
 }

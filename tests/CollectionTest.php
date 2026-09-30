@@ -466,4 +466,50 @@ final class CollectionTest extends TestCase
         $this->assertCount(3, $original);
         $this->assertSame('Alice', $original->first()['name'] ?? null);
     }
+
+    public function test_times_zero_returns_empty(): void
+    {
+        $this->assertSame([], Collection::times(0)->all());
+        $this->assertSame([], Collection::times(-1)->all());
+    }
+
+    public function test_pluck_on_objects(): void
+    {
+        $items = Collection::make([
+            (object) ['id' => 1, 'name' => 'Alice'],
+            (object) ['id' => 2, 'name' => 'Bob'],
+        ]);
+        $this->assertSame(['Alice', 'Bob'], $items->pluck('name')->all());
+    }
+
+    public function test_pluck_on_scalars_returns_nulls(): void
+    {
+        $this->assertSame([null, null], Collection::make([1, 2])->pluck('x')->all());
+    }
+
+    public function test_first_with_callback_no_match_returns_default(): void
+    {
+        $this->assertSame('none', Collection::make([1, 2, 3])->first(fn ($n) => $n > 10, 'none'));
+    }
+
+    public function test_last_with_callback_no_match_returns_default(): void
+    {
+        $this->assertSame('none', Collection::make([1, 2, 3])->last(fn ($n) => $n > 10, 'none'));
+    }
+
+    public function test_unique_with_array_items_strict(): void
+    {
+        $items = Collection::make([[1, 2], [1, 2], [3]]);
+        $this->assertCount(2, $items->unique());
+    }
+
+    public function test_unique_by_key_loose_with_array_values(): void
+    {
+        $items = Collection::make([
+            ['tags' => [1, 2]],
+            ['tags' => [1, 2]],
+            ['tags' => [3]],
+        ]);
+        $this->assertCount(2, $items->unique('tags'));
+    }
 }
