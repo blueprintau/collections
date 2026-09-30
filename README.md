@@ -1,7 +1,8 @@
-[![PHP Tests](https://github.com/blueprintau/collections/actions/workflows/tests.yml/badge.svg)](https://github.com/blueprintau/collections/actions/workflows/tests.yml)
-[![Packagist](https://img.shields.io/packagist/v/blueprintau/collections.svg)](https://packagist.org/packages/blueprintau/collections)
-
 # BlueprintAU Collections
+
+[![PHP Tests](https://github.com/blueprintau/collections/actions/workflows/tests.yml/badge.svg)](https://github.com/blueprintau/collections/actions/workflows/tests.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://blueprintau.github.io/collections/coverage-badge.json)](https://blueprintau.github.io/collections/)
+[![Packagist](https://img.shields.io/packagist/v/blueprintau/collections.svg)](https://packagist.org/packages/blueprintau/collections)
 
 A pure, standalone array wrapper for the BlueprintAU ecosystem. This is the
 generic collection package — no model imports, no framework coupling. It is
