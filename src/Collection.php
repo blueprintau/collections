@@ -5,18 +5,15 @@ declare(strict_types=1);
 namespace BlueprintAU\Collections;
 
 /**
- * A pure, standalone array wrapper. No model imports, no framework coupling.
+ * A pure, standalone array wrapper with no framework coupling.
  *
- * Transforms are immutable — each returns a new instance. This is the one
- * package every other BlueprintAU package can depend on without circularity.
- *
- * @template TKey of array-key
- * @template TValue
+ * @template  TKey of array-key
+ * @template  TValue
  *
  * @phpstan-consistent-constructor
  *
- * @implements Enumerable<TKey, TValue>
- * @implements \ArrayAccess<TKey, TValue>
+ * @implements  Enumerable<TKey, TValue>
+ * @implements  \ArrayAccess<TKey, TValue>
  */
 class Collection implements Enumerable, \Countable, \ArrayAccess
 {
@@ -29,7 +26,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * The constructor is protected — use `make()` (or another factory) to
      * create instances from outside the class.
      *
-     * @param iterable<TKey, TValue> $items
+     * @param  iterable<TKey, TValue> $items
      */
     protected function __construct(iterable $items = [])
     {
@@ -41,8 +38,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Convenience static factory equivalent to `new static($items)`.
      *
-     * @param iterable<TKey, TValue> $items
-     * @return static
+     * @param  iterable<TKey, TValue> $items
+     * @return  static
      */
     public static function make(iterable $items = []): static
     {
@@ -56,8 +53,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * an array it is used directly; otherwise it is wrapped in a single-item
      * collection. Useful for normalizing "one or many" inputs.
      *
-     * @param mixed $value
-     * @return static
+     * @param  mixed $value
+     * @return  static
      */
     public static function wrap(mixed $value): static
     {
@@ -71,12 +68,11 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Create a collection by invoking the callback N times.
      *
-     * The callback receives the 1-based index. Useful for generating
-     * sequences of items.
+     * The callback receives the 1-based index.
      *
-     * @param int $number
-     * @param (callable(int): TValue)|null $callback
-     * @return static
+     * @param  int $number
+     * @param  (callable(int): TValue)|null $callback
+     * @return  static
      */
     public static function times(int $number, ?callable $callback = null): static
     {
@@ -94,10 +90,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * generated in descending order. A step of zero returns an empty
      * collection rather than throwing.
      *
-     * @param int|float|string $from
-     * @param int|float|string $to
-     * @param int|float $step
-     * @return static
+     * @param  int|float|string $from
+     * @param  int|float|string $to
+     * @param  int|float $step
+     * @return  static
      */
     public static function range(int|float|string $from, int|float|string $to, int|float $step = 1): static
     {
@@ -108,19 +104,14 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     }
 
     /**
-     * Safe value access for arrays and objects — returns null on a missing
-     * key/property (no error). This is the package's own data_get equivalent,
-     * since the package has no dependencies.
+     * Get a value from an array or object, or null when the key is missing.
      *
-     * For objects, `$item->{$key}` dispatches magic methods: a missing
-     * property triggers `__get()` (and possibly `__isset()`), which may run
-     * arbitrary consumer code or have side effects. Plain property access is
-     * used for real properties; only genuinely missing properties fall
-     * through to the magic path.
+     * A missing object property dispatches magic `__get()`, which may run
+     * arbitrary consumer code.
      *
-     * @param TValue $item
-     * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return (TValue is array ? value-of<TValue> : mixed)
+     * @param  TValue $item
+     * @param  (TValue is array ? key-of<TValue> : string) $key
+     * @return  (TValue is array ? value-of<TValue> : mixed)
      */
     final protected function value(mixed $item, int|string $key): mixed
     {
@@ -140,9 +131,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * The callback receives the item and its key. Keys are preserved.
      *
-     * @template TNewValue
-     * @param callable(TValue, TKey): TNewValue $callback
-     * @return static<TKey, TNewValue>
+     * @template  TNewValue
+     * @param  callable(TValue, TKey): TNewValue $callback
+     * @return  static<TKey, TNewValue>
      */
     public function map(callable $callback): static
     {
@@ -158,8 +149,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * When no callback is given, truthy items are kept. Keys are preserved.
      *
-     * @param (callable(TValue, TKey): bool)|null $callback
-     * @return static
+     * @param  (callable(TValue, TKey): bool)|null $callback
+     * @return  static
      */
     public function filter(?callable $callback = null): static
     {
@@ -178,9 +169,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * When a key column is given, the result is keyed by that column's value;
      * otherwise the result is a plain list.
      *
-     * @param (TValue is array ? key-of<TValue> : string) $value
-     * @param ((TValue is array ? key-of<TValue> : string)|null) $key
-     * @return static<($key is null ? int : int|string), (TValue is array ? value-of<TValue> : mixed)>
+     * @param  (TValue is array ? key-of<TValue> : string) $value
+     * @param  ((TValue is array ? key-of<TValue> : string)|null) $key
+     * @return  static<($key is null ? int : int|string), (TValue is array ? value-of<TValue> : mixed)>
      */
     public function pluck(int|string $value, int|string|null $key = null): static
     {
@@ -201,8 +192,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Later items with a duplicate key overwrite earlier ones.
      *
-     * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return static<int|string, TValue>
+     * @param  (TValue is array ? key-of<TValue> : string) $key
+     * @return  static<int|string, TValue>
      */
     public function keyBy(int|string $key): static
     {
@@ -219,8 +210,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * The result is keyed by the group value, each holding a list of the
      * items in that group.
      *
-     * @param ((TValue is array ? key-of<TValue> : string)|callable(TValue, TKey): mixed) $groupBy
-     * @return static<(int|string), non-empty-list<TValue>>
+     * @param  ((TValue is array ? key-of<TValue> : string)|callable(TValue, TKey): mixed) $groupBy
+     * @return  static<(int|string), non-empty-list<TValue>>
      */
     public function groupBy(int|string|callable $groupBy): static
     {
@@ -237,10 +228,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * The callback must return an array; later keys overwrite earlier ones.
      *
-     * @template TMapKey of array-key
-     * @template TMapValue
-     * @param callable(TValue, TKey): array<TMapKey, TMapValue> $callback
-     * @return static<TMapKey, TMapValue>
+     * @template  TMapKey of array-key
+     * @template  TMapValue
+     * @param  callable(TValue, TKey): array<TMapKey, TMapValue> $callback
+     * @return  static<TMapKey, TMapValue>
      */
     public function mapWithKeys(callable $callback): static
     {
@@ -261,8 +252,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * collapse and integer keys are renumbered, so the resulting key type is
      * int|string.
      *
-     * @param callable(TValue, TKey): mixed $callback
-     * @return static<int|string, mixed>
+     * @param  callable(TValue, TKey): mixed $callback
+     * @return  static<int|string, mixed>
      */
     public function flatMap(callable $callback): static
     {
@@ -275,7 +266,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Non-array items are skipped. Integer keys are renumbered by the merge
      * and string keys are preserved, so the resulting key type is int|string.
      *
-     * @return static<int|string, (TValue is array ? value-of<TValue> : mixed)>
+     * @return  static<int|string, (TValue is array ? value-of<TValue> : mixed)>
      */
     public function collapse(): static
     {
@@ -295,10 +286,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * The callback receives the carry, the item, and the item's key.
      *
-     * @template TCarry
-     * @param callable(TCarry, TValue, TKey): TCarry $callback
-     * @param TCarry $initial
-     * @return TCarry
+     * @template  TCarry
+     * @param  callable(TCarry, TValue, TKey): TCarry $callback
+     * @param  TCarry $initial
+     * @return  TCarry
      */
     public function reduce(callable $callback, mixed $initial = null): mixed
     {
@@ -312,13 +303,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Sum the collection's values, or a single column of each item.
      *
-     * Non-numeric items throw a TypeError — the same behavior as the lazy
-     * implementation, so eager and lazy collections agree. (PHP's
-     * `array_sum` would warn and return 0 for non-numeric values; that
-     * silently-wrong result is deliberately not used here.)
+     * Non-numeric items throw a TypeError, matching the lazy implementation.
      *
-     * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
-     * @return int|float
+     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @return  int|float
      */
     public function sum(int|string|callable|null $column = null): int|float
     {
@@ -344,8 +332,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns 0 for an empty collection.
      *
-     * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
-     * @return int|float
+     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @return  int|float
      */
     public function avg(int|string|callable|null $column = null): int|float
     {
@@ -356,17 +344,12 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Get the minimum value, or the minimum of a single column.
      *
-     * Returns null for an empty collection.
+     * Returns null for an empty collection. Comparison uses PHP's `<`
+     * operator, which assumes homogeneous, comparable values.
      *
-     * Comparison uses PHP's `<` operator, which assumes homogeneous,
-     * comparable values. On heterogeneous collections (e.g. mixed strings
-     * and arrays, or objects without comparison semantics) the result may be
-     * silently wrong rather than an error — normalize or map to a comparable
-     * column first when the item types vary.
-     *
-     * @template TColumn
-     * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @template  TColumn
+     * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
+     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
     public function min(int|string|callable|null $column = null): mixed
     {
@@ -387,17 +370,12 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Get the maximum value, or the maximum of a single column.
      *
-     * Returns null for an empty collection.
+     * Returns null for an empty collection. Comparison uses PHP's `>`
+     * operator, which assumes homogeneous, comparable values.
      *
-     * Comparison uses PHP's `>` operator, which assumes homogeneous,
-     * comparable values. On heterogeneous collections (e.g. mixed strings
-     * and arrays, or objects without comparison semantics) the result may be
-     * silently wrong rather than an error — normalize or map to a comparable
-     * column first when the item types vary.
-     *
-     * @template TColumn
-     * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @template  TColumn
+     * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
+     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
     public function max(int|string|callable|null $column = null): mixed
     {
@@ -418,7 +396,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Count the number of items in the collection.
      *
-     * @return int
+     * @return  int
      */
     public function count(): int
     {
@@ -428,26 +406,14 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Determine whether the collection contains a given item.
      *
-     * Supports two call signatures:
-     *  - contains($value)          — strict value membership
-     *  - contains($key, $value) / contains($key, $value, $operator)
-     *                              — comparison of a column against a value
+     * With one argument, membership is strict value equality — a callable
+     * value is checked as a value, never invoked as a predicate. With a
+     * column and value, the column is compared using the given operator.
      *
-     * The single-argument form is always strict value membership — a value
-     * that happens to be callable (e.g. the string 'strlen' or a Closure) is
-     * checked as a value, never invoked as a predicate. Use `some()` for
-     * predicate-based search.
-     *
-     * The column form compares `value($item, $key)` against `$value` using
-     * the given operator (defaulting to strict equality). The operator is a
-     * `ComparisonOperator` enum whose `compare()` method owns the semantics,
-     * so an invalid operator is a compile-time error rather than a
-     * silently-wrong result.
-     *
-     * @param mixed $key
-     * @param mixed $value
-     * @param ComparisonOperator $operator
-     * @return bool
+     * @param  mixed  $key  A value to find, or a column name for the comparison form.
+     * @param  mixed  $value  The value the column is compared against.
+     * @param  ComparisonOperator  $operator
+     * @return  bool
      */
     public function contains(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): bool
     {
@@ -461,19 +427,14 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Filter the collection to items whose column matches a value.
      *
-     * Returns a new collection of the items where `value($item, $key)`
-     * compares against `$value` using the given operator (defaulting to
-     * strict equality). Keys are preserved.
+     * Keys are preserved. On a collection of scalar items, `value()` returns
+     * null for every item, so the filter keeps nothing (or everything, for
+     * NotEquals/NotIn) — use `filter()` with a predicate instead.
      *
-     * Note: this operates on *columns of items*. On a collection of scalar
-     * items, `value()` returns null for every item, so the filter keeps
-     * nothing (or everything, for NotEquals/NotIn) — use `filter()` with a
-     * predicate for scalar collections.
-     *
-     * @param (TValue is array ? key-of<TValue> : string) $key
-     * @param mixed $value
-     * @param ComparisonOperator $operator
-     * @return static
+     * @param  (TValue is array ? key-of<TValue> : string) $key
+     * @param  mixed $value
+     * @param  ComparisonOperator $operator
+     * @return  static
      */
     public function where(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): static
     {
@@ -485,8 +446,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns true for an empty collection.
      *
-     * @param callable(TValue, TKey): bool $callback
-     * @return bool
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  bool
      */
     public function every(callable $callback): bool
     {
@@ -501,8 +462,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Determine whether any item passes the given callback.
      *
-     * @param callable(TValue, TKey): bool $callback
-     * @return bool
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  bool
      */
     public function some(callable $callback): bool
     {
@@ -522,8 +483,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Returning `false` from the callback stops iteration early. The
      * collection is returned unchanged for chaining.
      *
-     * @param callable(TValue, TKey): mixed $callback
-     * @return $this
+     * @param  callable(TValue, TKey): mixed $callback
+     * @return  $this
      */
     public function each(callable $callback): static
     {
@@ -540,10 +501,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns the given default (or null) when nothing matches.
      *
-     * @template TDefault
-     * @param (callable(TValue, TKey): bool)|null $callback
-     * @param TDefault $default
-     * @return TValue|TDefault
+     * @template  TDefault
+     * @param  (callable(TValue, TKey): bool)|null $callback
+     * @param  TDefault $default
+     * @return  TValue|TDefault
      */
     public function first(?callable $callback = null, mixed $default = null): mixed
     {
@@ -564,10 +525,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns the given default (or null) when nothing matches.
      *
-     * @template TDefault
-     * @param (callable(TValue, TKey): bool)|null $callback
-     * @param TDefault $default
-     * @return TValue|TDefault
+     * @template  TDefault
+     * @param  (callable(TValue, TKey): bool)|null $callback
+     * @param  TDefault $default
+     * @return  TValue|TDefault
      */
     public function last(?callable $callback = null, mixed $default = null): mixed
     {
@@ -586,7 +547,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Reset the collection's keys to a sequential 0-based list.
      *
-     * @return static
+     * @return  static
      */
     public function values(): static
     {
@@ -596,7 +557,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Get the collection's keys as a new collection.
      *
-     * @return static
+     * @return  static
      */
     public function keys(): static
     {
@@ -612,8 +573,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * the last |$limit| items. Original keys are always preserved — call
      * `values()` to renumber to a 0-based list.
      *
-     * @param int $limit
-     * @return static
+     * @param  int $limit
+     * @return  static
      */
     public function take(int $limit): static
     {
@@ -627,8 +588,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * keeps only the last |$count| items. Original keys are always preserved
      * — call `values()` to renumber to a 0-based list.
      *
-     * @param int $count
-     * @return static
+     * @param  int $count
+     * @return  static
      */
     public function skip(int $count): static
     {
@@ -643,9 +604,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * stops that many items before the end. Original keys are always
      * preserved — call `values()` to renumber to a 0-based list.
      *
-     * @param int $offset
-     * @param int|null $length
-     * @return static
+     * @param  int $offset
+     * @param  int|null $length
+     * @return  static
      */
     public function slice(int $offset, ?int $length = null): static
     {
@@ -663,9 +624,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * the $strict flag is ignored — loose dedup of raw values would silently
      * merge `1` and `'1'`. The flag only applies to column-based dedup.
      *
-     * @param string|null $key
-     * @param bool $strict
-     * @return static
+     * @param  string|null $key
+     * @param  bool $strict
+     * @return  static
      */
     public function unique(?string $key = null, bool $strict = false): static
     {
@@ -688,16 +649,13 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Determine whether a value has already been seen, tracking it if not.
      *
-     * Uses an O(1) hash lookup for all values: scalars are keyed by their
-     * string form (type-prefixed in strict mode so that `1` and `'1'` are
-     * distinct), arrays by a hash of their serialization, and objects by
-     * `spl_object_id` (identity — two separate instances with equal
-     * properties are treated as distinct).
+     * Scalars hash by their string form (type-prefixed in strict mode),
+     * arrays by a hash of their serialization, and objects by identity.
      *
-     * @param mixed $value
-     * @param array<int|string, mixed> $seen
-     * @param bool $strict
-     * @return bool
+     * @param  mixed $value
+     * @param  array<int|string, mixed> $seen
+     * @param  bool $strict
+     * @return  bool
      */
     protected function isSeen(mixed $value, array &$seen, bool $strict): bool
     {
@@ -727,8 +685,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Keys are preserved. Without a callback, items are sorted by value
      * using `asort`.
      *
-     * @param (callable(TValue, TValue): int)|null $callback
-     * @return static
+     * @param  (callable(TValue, TValue): int)|null $callback
+     * @return  static
      */
     public function sort(?callable $callback = null): static
     {
@@ -747,13 +705,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *  - SORT_REGULAR (default) — numeric-aware when both values are numeric,
      *    otherwise lexical
      *
-     * Implemented as decorate-sort-undecorate: the extraction callback runs
-     * exactly once per item (O(n) invocations), not once per comparison.
-     *
-     * @param string|callable(TValue): mixed $column
-     * @param int $options
-     * @param bool $descending
-     * @return static
+     * @param  string|callable(TValue): mixed $column
+     * @param  int $options
+     * @param  bool $descending
+     * @return  static
      */
     public function sortBy(string|callable $column, int $options = SORT_REGULAR, bool $descending = false): static
     {
@@ -796,7 +751,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Keys are preserved.
      *
-     * @return static
+     * @return  static
      */
     public function reverse(): static
     {
@@ -810,7 +765,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Nested collections are recursively converted to arrays.
      *
-     * @return array<TKey, mixed>
+     * @return  array<TKey, mixed>
      */
     public function toArray(): array
     {
@@ -823,8 +778,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Convert the collection to a JSON string.
      *
-     * @param int $options
-     * @return string
+     * @param  int $options
+     * @return  string
      */
     public function toJson(int $options = 0): string
     {
@@ -834,7 +789,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Serialize the collection to a JSON-encodable array.
      *
-     * @return array<TKey, mixed>
+     * @return  array<TKey, mixed>
      */
     public function jsonSerialize(): array
     {
@@ -846,7 +801,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Unlike toArray, nested collections are not recursively converted.
      *
-     * @return array<TKey, TValue>
+     * @return  array<TKey, TValue>
      */
     public function all(): array
     {
@@ -861,8 +816,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * Uses array_key_exists so that an item whose value is null still counts
      * as present (isset() would report it as absent).
      *
-     * @param mixed $offset
-     * @return bool
+     * @param  mixed $offset
+     * @return  bool
      */
     public function offsetExists(mixed $offset): bool
     {
@@ -872,8 +827,8 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Get the item at the given offset, or null if it does not exist.
      *
-     * @param mixed $offset
-     * @return TValue|null
+     * @param  mixed $offset
+     * @return  TValue|null
      */
     public function offsetGet(mixed $offset): mixed
     {
@@ -883,13 +838,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Writing to a collection is not supported.
      *
-     * Collections are immutable — use a transform (map, filter, etc.) to
-     * derive a new collection instead of mutating this one in place.
-     *
-     * @param mixed $offset
-     * @param mixed $value
-     * @return void
-     * @throws \BadMethodCallException Always.
+     * @param  mixed  $offset
+     * @param  mixed  $value
+     * @return  void
+     * @throws  \BadMethodCallException
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
@@ -899,12 +851,9 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Removing an item from a collection is not supported.
      *
-     * Collections are immutable — use a transform (filter, etc.) to derive a
-     * new collection instead of mutating this one in place.
-     *
-     * @param mixed $offset
-     * @return void
-     * @throws \BadMethodCallException Always.
+     * @param  mixed  $offset
+     * @return  void
+     * @throws  \BadMethodCallException
      */
     public function offsetUnset(mixed $offset): void
     {
@@ -914,7 +863,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
     /**
      * Get an iterator for the collection's items.
      *
-     * @return \ArrayIterator<TKey, TValue>
+     * @return  \ArrayIterator<TKey, TValue>
      */
     public function getIterator(): \Traversable
     {

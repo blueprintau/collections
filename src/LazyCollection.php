@@ -5,62 +5,26 @@ declare(strict_types=1);
 namespace BlueprintAU\Collections;
 
 /**
- * A lazy counterpart to Collection that streams items through a generator
- * source instead of eagerly materializing them in memory.
+ * A lazy collection that streams items through a generator source.
  *
- * Transforms (map, filter, pluck, ...) are lazy — they return a new
- * LazyCollection whose generator pulls from this one on demand. Terminal
- * operations (toArray, count, toJson, all, sort, ...) materialize the stream.
+ * Transforms are lazy; terminal operations (count, sort, toArray, ...)
+ * materialize the stream. The source is stored as a factory closure, so a
+ * LazyCollection is re-iterable — but a shared single-use source (e.g. a raw
+ * Generator) is not safe for concurrent or repeated iteration.
  *
- * The source is stored as a factory closure returning a fresh generator, so a
- * LazyCollection is re-iterable: each call to getIterator() re-invokes the
- * factory. Prefer passing a callable source (e.g. a generator function) so the
- * stream can be replayed.
- *
- * Non-callable sources are wrapped via `yield from`, which rewinds re-iterable
- * iterators (e.g. `ArrayIterator`) automatically on each iteration. A raw
- * `Generator` is single-use: iterating it twice throws a "Cannot rewind a
- * generator that was already run" exception rather than silently returning wrong
- * data. Pass a callable source to replay a stream; pass a raw `Generator` only
- * when the source is genuinely one-shot.
- *
- * ## Memory model
- *
- * Transforms (map, filter, pluck, take, skip, ...) are O(1) memory: each item
- * is pulled from the source, processed, and released. Operations that
- * inherently need the whole stream accumulate internally and are documented
- * as terminal or materializing: `count`, `sort`, `sortBy`, `reverse`,
- * `toArray`, `toJson`, `all`, `groupBy`, and `unique` (which keeps a "seen"
- * set that grows with the number of distinct values). `take`/`skip`/`slice`
- * with negative arguments must reach the end of the stream and materialize
- * internally. On an infinite source, any accumulating operation will run
- * forever or exhaust memory — there is no guard; prefer `take()` to bound
- * infinite streams before applying terminal operations.
- *
- * ## Concurrency model
- *
- * A LazyCollection is not safe for concurrent iteration. Each `getIterator()`
- * call produces a fresh generator from the source factory, but two consumers
- * iterating the *same* underlying single-use source (e.g. a shared raw
- * `Generator`, a socket, a cursor) will silently split its items between
- * them — each item goes to exactly one consumer, with no error. This applies
- * through transforms too: a mapped or filtered view shares the parent's
- * source. Iterate a LazyCollection from one consumer at a time, or wrap a
- * shared source in a caching layer before handing it to multiple consumers.
- *
- * @template TKey of array-key
- * @template TValue
+ * @template  TKey of array-key
+ * @template  TValue
  *
  * @phpstan-consistent-constructor
  *
- * @implements Enumerable<TKey, TValue>
+ * @implements  Enumerable<TKey, TValue>
  */
 class LazyCollection implements Enumerable
 {
     /**
      * A factory that produces a fresh generator for each iteration.
      *
-     * @var (callable(): \Generator<TKey, TValue, mixed, void>)
+     * @var  (callable(): \Generator<TKey, TValue, mixed, void>)
      */
     protected $source;
 
@@ -70,7 +34,7 @@ class LazyCollection implements Enumerable
      * The constructor is protected — use `make()` (or another factory) to
      * create instances from outside the class.
      *
-     * @param iterable<TKey, TValue>|(callable(): \Generator<TKey, TValue, mixed, void>) $source
+     * @param  iterable<TKey, TValue>|(callable(): \Generator<TKey, TValue, mixed, void>) $source
      */
     protected function __construct(iterable|callable $source = [])
     {
@@ -86,8 +50,8 @@ class LazyCollection implements Enumerable
     /**
      * Create a new lazy collection from the given source.
      *
-     * @param iterable<TKey, TValue>|(callable(): \Generator<TKey, TValue, mixed, void>) $source
-     * @return static
+     * @param  iterable<TKey, TValue>|(callable(): \Generator<TKey, TValue, mixed, void>) $source
+     * @return  static
      */
     public static function make(iterable|callable $source = []): static
     {
@@ -101,8 +65,8 @@ class LazyCollection implements Enumerable
      * it is an array it is used directly; otherwise it is wrapped in a
      * single-item collection.
      *
-     * @param mixed $value
-     * @return static
+     * @param  mixed $value
+     * @return  static
      */
     public static function wrap(mixed $value): static
     {
@@ -116,14 +80,11 @@ class LazyCollection implements Enumerable
     /**
      * Create a lazy collection by invoking the callback N times.
      *
-     * The callback receives the 1-based index and its return value becomes
-     * the item, keyed by that index. The sequence is produced by a generator
-     * — no array of N items is ever materialized, so O(1) memory regardless
-     * of $number.
+     * The callback receives the 1-based index.
      *
-     * @param int $number
-     * @param (callable(int): TValue)|null $callback
-     * @return static<int, TValue>
+     * @param  int $number
+     * @param  (callable(int): TValue)|null $callback
+     * @return  static<int, TValue>
      */
     public static function times(int $number, ?callable $callback = null): static
     {
@@ -141,17 +102,14 @@ class LazyCollection implements Enumerable
     /**
      * Create a lazy collection of numbers in the given range.
      *
-     * Mirrors PHP's `range()` sequence (descending when $to < $from) but is
-     * produced by a generator — no array of the full range is ever
-     * materialized, so O(1) memory regardless of span.
+     * Mirrors PHP's `range()`, descending when $to is less than $from. Only
+     * integer bounds and step are produced lazily; string/float bounds
+     * delegate to PHP's `range()`.
      *
-     * Only integer bounds/step are handled lazily here; string/float bounds
-     * delegate to PHP's `range()` (materialized) for identical results.
-     *
-     * @param int|float|string $from
-     * @param int|float|string $to
-     * @param int|float $step
-     * @return static
+     * @param  int|float|string $from
+     * @param  int|float|string $to
+     * @param  int|float $step
+     * @return  static
      */
     public static function range(int|float|string $from, int|float|string $to, int|float $step = 1): static
     {
@@ -181,18 +139,14 @@ class LazyCollection implements Enumerable
     }
 
     /**
-     * Safe value access for arrays and objects — returns null on a missing
-     * key/property (no error).
+     * Get a value from an array or object, or null when the key is missing.
      *
-     * For objects, `$item->{$key}` dispatches magic methods: a missing
-     * property triggers `__get()` (and possibly `__isset()`), which may run
-     * arbitrary consumer code or have side effects. Plain property access is
-     * used for real properties; only genuinely missing properties fall
-     * through to the magic path.
+     * A missing object property dispatches magic `__get()`, which may run
+     * arbitrary consumer code.
      *
-     * @param TValue $item
-     * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return (TValue is array ? value-of<TValue> : mixed)
+     * @param  TValue $item
+     * @param  (TValue is array ? key-of<TValue> : string) $key
+     * @return  (TValue is array ? value-of<TValue> : mixed)
      */
     protected function value(mixed $item, int|string $key): mixed
     {
@@ -208,16 +162,13 @@ class LazyCollection implements Enumerable
     /**
      * Determine whether a value has already been seen, tracking it if not.
      *
-     * Uses an O(1) hash lookup for all values: scalars are keyed by their
-     * string form (type-prefixed in strict mode so that `1` and `'1'` are
-     * distinct), arrays by a hash of their serialization, and objects by
-     * `spl_object_id` (identity — two separate instances with equal
-     * properties are treated as distinct).
+     * Scalars hash by their string form (type-prefixed in strict mode),
+     * arrays by a hash of their serialization, and objects by identity.
      *
-     * @param mixed $value
-     * @param array<int|string, mixed> $seen
-     * @param bool $strict
-     * @return bool
+     * @param  mixed $value
+     * @param  array<int|string, mixed> $seen
+     * @param  bool $strict
+     * @return  bool
      */
     protected function isSeen(mixed $value, array &$seen, bool $strict): bool
     {
@@ -248,9 +199,9 @@ class LazyCollection implements Enumerable
      *
      * The callback receives the item and its key. Keys are preserved.
      *
-     * @template TNewValue
-     * @param callable(TValue, TKey): TNewValue $callback
-     * @return static<TKey, TNewValue>
+     * @template  TNewValue
+     * @param  callable(TValue, TKey): TNewValue $callback
+     * @return  static<TKey, TNewValue>
      */
     public function map(callable $callback): static
     {
@@ -266,8 +217,8 @@ class LazyCollection implements Enumerable
      *
      * When no callback is given, truthy items are kept. Keys are preserved.
      *
-     * @param (callable(TValue, TKey): bool)|null $callback
-     * @return static
+     * @param  (callable(TValue, TKey): bool)|null $callback
+     * @return  static
      */
     public function filter(?callable $callback = null): static
     {
@@ -286,9 +237,9 @@ class LazyCollection implements Enumerable
      * When a key column is given, the result is keyed by that column's value;
      * otherwise the result is a plain list.
      *
-     * @param (TValue is array ? key-of<TValue> : string) $value
-     * @param ((TValue is array ? key-of<TValue> : string)|null) $key
-     * @return static<($key is null ? int : int|string), (TValue is array ? value-of<TValue> : mixed)>
+     * @param  (TValue is array ? key-of<TValue> : string) $value
+     * @param  ((TValue is array ? key-of<TValue> : string)|null) $key
+     * @return  static<($key is null ? int : int|string), (TValue is array ? value-of<TValue> : mixed)>
      */
     public function pluck(int|string $value, int|string|null $key = null): static
     {
@@ -309,8 +260,8 @@ class LazyCollection implements Enumerable
      *
      * Later items with a duplicate key overwrite earlier ones.
      *
-     * @param (TValue is array ? key-of<TValue> : string) $key
-     * @return static<int|string, TValue>
+     * @param  (TValue is array ? key-of<TValue> : string) $key
+     * @return  static<int|string, TValue>
      */
     public function keyBy(int|string $key): static
     {
@@ -328,8 +279,8 @@ class LazyCollection implements Enumerable
      * items in that group. Grouping requires the full stream, so this
      * materializes internally before returning a lazy collection.
      *
-     * @param ((TValue is array ? key-of<TValue> : string)|callable(TValue, TKey): mixed) $groupBy
-     * @return static<(int|string), non-empty-list<TValue>>
+     * @param  ((TValue is array ? key-of<TValue> : string)|callable(TValue, TKey): mixed) $groupBy
+     * @return  static<(int|string), non-empty-list<TValue>>
      */
     public function groupBy(int|string|callable $groupBy): static
     {
@@ -346,10 +297,10 @@ class LazyCollection implements Enumerable
      *
      * The callback must return an array; later keys overwrite earlier ones.
      *
-     * @template TMapKey of array-key
-     * @template TMapValue
-     * @param callable(TValue, TKey): array<TMapKey, TMapValue> $callback
-     * @return static<TMapKey, TMapValue>
+     * @template  TMapKey of array-key
+     * @template  TMapValue
+     * @param  callable(TValue, TKey): array<TMapKey, TMapValue> $callback
+     * @return  static<TMapKey, TMapValue>
      */
     public function mapWithKeys(callable $callback): static
     {
@@ -370,8 +321,8 @@ class LazyCollection implements Enumerable
      * collapse and integer keys are renumbered, so the resulting key type is
      * int|string.
      *
-     * @param callable(TValue, TKey): mixed $callback
-     * @return static<int|string, mixed>
+     * @param  callable(TValue, TKey): mixed $callback
+     * @return  static<int|string, mixed>
      */
     public function flatMap(callable $callback): static
     {
@@ -384,7 +335,7 @@ class LazyCollection implements Enumerable
      * Non-array items are skipped. Integer keys are renumbered by the merge
      * and string keys are preserved, so the resulting key type is int|string.
      *
-     * @return static<int|string, (TValue is array ? value-of<TValue> : mixed)>
+     * @return  static<int|string, (TValue is array ? value-of<TValue> : mixed)>
      */
     public function collapse(): static
     {
@@ -406,10 +357,10 @@ class LazyCollection implements Enumerable
      *
      * The callback receives the carry, the item, and the item's key.
      *
-     * @template TCarry
-     * @param callable(TCarry, TValue, TKey): TCarry $callback
-     * @param TCarry $initial
-     * @return TCarry
+     * @template  TCarry
+     * @param  callable(TCarry, TValue, TKey): TCarry $callback
+     * @param  TCarry $initial
+     * @return  TCarry
      */
     public function reduce(callable $callback, mixed $initial = null): mixed
     {
@@ -423,11 +374,10 @@ class LazyCollection implements Enumerable
     /**
      * Sum the collection's values, or a single column of each item.
      *
-     * Non-numeric items throw a TypeError — the same behavior as the eager
-     * implementation, so eager and lazy collections agree.
+     * Non-numeric items throw a TypeError, matching the eager implementation.
      *
-     * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
-     * @return int|float
+     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @return  int|float
      */
     public function sum(int|string|callable|null $column = null): int|float
     {
@@ -453,13 +403,11 @@ class LazyCollection implements Enumerable
      *
      * Returns 0 for an empty collection.
      *
-     * This is a single-pass operation: count and sum are accumulated together
-     * so the stream is traversed exactly once. This matters for one-shot
-     * sources (a raw Generator can only be iterated once) and avoids
-     * double-invoking factory sources.
+     * Count and sum are accumulated in a single pass, which matters for
+     * one-shot sources.
      *
-     * @param (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
-     * @return int|float
+     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @return  int|float
      */
     public function avg(int|string|callable|null $column = null): int|float
     {
@@ -477,17 +425,12 @@ class LazyCollection implements Enumerable
     /**
      * Get the minimum value, or the minimum of a single column.
      *
-     * Returns null for an empty collection.
+     * Returns null for an empty collection. Comparison uses PHP's `<`
+     * operator, which assumes homogeneous, comparable values.
      *
-     * Comparison uses PHP's `<` operator, which assumes homogeneous,
-     * comparable values. On heterogeneous collections (e.g. mixed strings
-     * and arrays, or objects without comparison semantics) the result may be
-     * silently wrong rather than an error — normalize or map to a comparable
-     * column first when the item types vary.
-     *
-     * @template TColumn
-     * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @template  TColumn
+     * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
+     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
     public function min(int|string|callable|null $column = null): mixed
     {
@@ -508,17 +451,12 @@ class LazyCollection implements Enumerable
     /**
      * Get the maximum value, or the maximum of a single column.
      *
-     * Returns null for an empty collection.
+     * Returns null for an empty collection. Comparison uses PHP's `>`
+     * operator, which assumes homogeneous, comparable values.
      *
-     * Comparison uses PHP's `>` operator, which assumes homogeneous,
-     * comparable values. On heterogeneous collections (e.g. mixed strings
-     * and arrays, or objects without comparison semantics) the result may be
-     * silently wrong rather than an error — normalize or map to a comparable
-     * column first when the item types vary.
-     *
-     * @template TColumn
-     * @param (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @template  TColumn
+     * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
+     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
      */
     public function max(int|string|callable|null $column = null): mixed
     {
@@ -541,7 +479,7 @@ class LazyCollection implements Enumerable
      *
      * This is a terminal operation — the stream is consumed.
      *
-     * @return int
+     * @return  int
      */
     public function count(): int
     {
@@ -551,20 +489,14 @@ class LazyCollection implements Enumerable
     /**
      * Determine whether the collection contains a given item.
      *
-     * Supports two call signatures:
-     *  - contains($value)          — strict value membership
-     *  - contains($key, $value) / contains($key, $value, $operator)
-     *                              — comparison of a column against a value
+     * With one argument, membership is strict value equality — a callable
+     * value is checked as a value, never invoked as a predicate. With a
+     * column and value, the column is compared using the given operator.
      *
-     * The single-argument form is always strict value membership — a value
-     * that happens to be callable (e.g. the string 'strlen' or a Closure) is
-     * checked as a value, never invoked as a predicate. Use `some()` for
-     * predicate-based search.
-     *
-     * @param mixed $key
-     * @param mixed $value
-     * @param ComparisonOperator $operator
-     * @return bool
+     * @param  mixed  $key  A value to find, or a column name for the comparison form.
+     * @param  mixed  $value  The value the column is compared against.
+     * @param  ComparisonOperator  $operator
+     * @return  bool
      */
     public function contains(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): bool
     {
@@ -583,19 +515,14 @@ class LazyCollection implements Enumerable
     /**
      * Filter the collection to items whose column matches a value.
      *
-     * Returns a new collection of the items where `value($item, $key)`
-     * compares against `$value` using the given operator (defaulting to
-     * strict equality). Keys are preserved.
+     * Keys are preserved. On a collection of scalar items, `value()` returns
+     * null for every item, so the filter keeps nothing (or everything, for
+     * NotEquals/NotIn) — use `filter()` with a predicate instead.
      *
-     * Note: this operates on *columns of items*. On a collection of scalar
-     * items, `value()` returns null for every item, so the filter keeps
-     * nothing (or everything, for NotEquals/NotIn) — use `filter()` with a
-     * predicate for scalar collections.
-     *
-     * @param (TValue is array ? key-of<TValue> : string) $key
-     * @param mixed $value
-     * @param ComparisonOperator $operator
-     * @return static
+     * @param  (TValue is array ? key-of<TValue> : string) $key
+     * @param  mixed $value
+     * @param  ComparisonOperator $operator
+     * @return  static
      */
     public function where(mixed $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): static
     {
@@ -607,8 +534,8 @@ class LazyCollection implements Enumerable
      *
      * Returns true for an empty collection.
      *
-     * @param callable(TValue, TKey): bool $callback
-     * @return bool
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  bool
      */
     public function every(callable $callback): bool
     {
@@ -623,8 +550,8 @@ class LazyCollection implements Enumerable
     /**
      * Determine whether any item passes the given callback.
      *
-     * @param callable(TValue, TKey): bool $callback
-     * @return bool
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  bool
      */
     public function some(callable $callback): bool
     {
@@ -644,8 +571,8 @@ class LazyCollection implements Enumerable
      * Returning `false` from the callback stops iteration early. The
      * collection is returned unchanged for chaining.
      *
-     * @param callable(TValue, TKey): mixed $callback
-     * @return $this
+     * @param  callable(TValue, TKey): mixed $callback
+     * @return  $this
      */
     public function each(callable $callback): static
     {
@@ -662,10 +589,10 @@ class LazyCollection implements Enumerable
      *
      * Returns the given default (or null) when nothing matches.
      *
-     * @template TDefault
-     * @param (callable(TValue, TKey): bool)|null $callback
-     * @param TDefault $default
-     * @return TValue|TDefault
+     * @template  TDefault
+     * @param  (callable(TValue, TKey): bool)|null $callback
+     * @param  TDefault $default
+     * @return  TValue|TDefault
      */
     public function first(?callable $callback = null, mixed $default = null): mixed
     {
@@ -683,10 +610,10 @@ class LazyCollection implements Enumerable
      * Returns the given default (or null) when nothing matches. This consumes
      * the entire stream.
      *
-     * @template TDefault
-     * @param (callable(TValue, TKey): bool)|null $callback
-     * @param TDefault $default
-     * @return TValue|TDefault
+     * @template  TDefault
+     * @param  (callable(TValue, TKey): bool)|null $callback
+     * @param  TDefault $default
+     * @return  TValue|TDefault
      */
     public function last(?callable $callback = null, mixed $default = null): mixed
     {
@@ -702,7 +629,7 @@ class LazyCollection implements Enumerable
     /**
      * Reset the collection's keys to a sequential 0-based list.
      *
-     * @return static<int, TValue>
+     * @return  static<int, TValue>
      */
     public function values(): static
     {
@@ -716,7 +643,7 @@ class LazyCollection implements Enumerable
     /**
      * Get the collection's keys as a new collection.
      *
-     * @return static<int, TKey>
+     * @return  static<int, TKey>
      */
     public function keys(): static
     {
@@ -739,8 +666,8 @@ class LazyCollection implements Enumerable
      * The positive case streams; the negative case must reach the end of the
      * stream and materializes internally.
      *
-     * @param int $limit
-     * @return static
+     * @param  int $limit
+     * @return  static
      */
     public function take(int $limit): static
     {
@@ -772,8 +699,8 @@ class LazyCollection implements Enumerable
      * The positive case streams; the negative case uses a sliding window
      * bounded by |$count| items.
      *
-     * @param int $count
-     * @return static
+     * @param  int $count
+     * @return  static
      */
     public function skip(int $count): static
     {
@@ -815,9 +742,9 @@ class LazyCollection implements Enumerable
      * The positive-offset, non-negative-length case streams; the other cases
      * must know the end of the stream and materialize internally.
      *
-     * @param int $offset
-     * @param int|null $length
-     * @return static
+     * @param  int $offset
+     * @param  int|null $length
+     * @return  static
      */
     public function slice(int $offset, ?int $length = null): static
     {
@@ -857,9 +784,9 @@ class LazyCollection implements Enumerable
      * the $strict flag is ignored — loose dedup of raw values would silently
      * merge `1` and `'1'`. The flag only applies to column-based dedup.
      *
-     * @param string|null $key
-     * @param bool $strict
-     * @return static
+     * @param  string|null $key
+     * @param  bool $strict
+     * @return  static
      */
     public function unique(?string $key = null, bool $strict = false): static
     {
@@ -881,8 +808,8 @@ class LazyCollection implements Enumerable
      * Keys are preserved. Without a callback, items are sorted by value
      * using `asort`. This is a terminal operation — the stream is consumed.
      *
-     * @param (callable(TValue, TValue): int)|null $callback
-     * @return static
+     * @param  (callable(TValue, TValue): int)|null $callback
+     * @return  static
      */
     public function sort(?callable $callback = null): static
     {
@@ -901,14 +828,12 @@ class LazyCollection implements Enumerable
      *  - SORT_REGULAR (default) — numeric-aware when both values are numeric,
      *    otherwise lexical
      *
-     * This is a terminal operation — the stream is consumed. Implemented as
-     * decorate-sort-undecorate: the extraction callback runs exactly once per
-     * item (O(n) invocations), not once per comparison.
+     * This is a terminal operation — the stream is consumed.
      *
-     * @param string|callable(TValue): mixed $column
-     * @param int $options
-     * @param bool $descending
-     * @return static
+     * @param  string|callable(TValue): mixed $column
+     * @param  int $options
+     * @param  bool $descending
+     * @return  static
      */
     public function sortBy(string|callable $column, int $options = SORT_REGULAR, bool $descending = false): static
     {
@@ -952,7 +877,7 @@ class LazyCollection implements Enumerable
      * Keys are preserved. This is a terminal operation — the stream is
      * consumed.
      *
-     * @return static
+     * @return  static
      */
     public function reverse(): static
     {
@@ -967,7 +892,7 @@ class LazyCollection implements Enumerable
      * Nested collections are recursively converted to arrays. This is a
      * terminal operation — the stream is consumed.
      *
-     * @return array<TKey, mixed>
+     * @return  array<TKey, mixed>
      */
     public function toArray(): array
     {
@@ -983,8 +908,8 @@ class LazyCollection implements Enumerable
      *
      * This is a terminal operation — the stream is consumed.
      *
-     * @param int $options
-     * @return string
+     * @param  int $options
+     * @return  string
      */
     public function toJson(int $options = 0): string
     {
@@ -996,7 +921,7 @@ class LazyCollection implements Enumerable
      *
      * This is a terminal operation — the stream is consumed.
      *
-     * @return array<TKey, mixed>
+     * @return  array<TKey, mixed>
      */
     public function jsonSerialize(): array
     {
@@ -1009,7 +934,7 @@ class LazyCollection implements Enumerable
      * Unlike toArray, nested collections are not recursively converted. This
      * is a terminal operation — the stream is consumed.
      *
-     * @return array<TKey, TValue>
+     * @return  array<TKey, TValue>
      */
     public function all(): array
     {
@@ -1023,7 +948,7 @@ class LazyCollection implements Enumerable
      *
      * Each call re-invokes the source factory, producing a fresh generator.
      *
-     * @return \Generator<TKey, TValue, mixed, void>
+     * @return  \Generator<TKey, TValue, mixed, void>
      */
     public function getIterator(): \Traversable
     {
