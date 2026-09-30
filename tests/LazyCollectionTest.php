@@ -135,6 +135,12 @@ final class LazyCollectionTest extends TestCase
         $this->assertSame([1, 3, 5], LazyCollection::range(1, 5, 2)->all());
     }
 
+    public function test_range_non_integer_bounds_delegates_to_range(): void
+    {
+        $this->assertSame(range(1.0, 2.0, 0.5), LazyCollection::range(1.0, 2.0, 0.5)->all());
+        $this->assertSame(range('a', 'e'), LazyCollection::range('a', 'e')->all());
+    }
+
     public function test_map(): void
     {
         $this->assertSame([2, 4, 6], (LazyCollection::make([1, 2, 3]))->map(fn ($n) => $n * 2)->all());
