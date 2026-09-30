@@ -58,7 +58,9 @@ final class LazyCollectionTest extends TestCase
     public function test_is_reiterable(): void
     {
         $lazy = LazyCollection::make(fn (): \Generator => yield from [1, 2, 3]);
-        $this->assertSame([1, 2, 3], $lazy->all());
+        $first = $lazy->all();
+        $this->assertSame([1, 2, 3], $first);
+        // A re-iterable source replays the stream on the second pass.
         $this->assertSame([1, 2, 3], $lazy->all());
     }
 

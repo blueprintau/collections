@@ -1,0 +1,132 @@
+name: Coverage
+
+# Generates a line-coverage HTML report and deploys it to GitHub Pages
+# on main via the official Pages deployment flow (OIDC, no gh-pages
+# branch). Kept separate from tests.yml because the deploy needs
+# `pages: write` + `id-token: write` — tests.yml stays least-privilege
+# at `contents: read`.
+#
+# The report is served at https://blueprintau.github.io/collections/ and
+# the Shields badge in the README reads
+# .../collections/coverage-badge.json from the same deployment. PR runs
+# still produce the report as a downloadable workflow artifact.
+on:
+    push:
+        branches: [main]
+        paths:
+            - "src/**"
+            - "tests/**"
+            - "phpunit.xml"
+            - "composer.json"
+            - "composer.lock"
+            - "ci/**"
+            - ".github/workflows/coverage.yml"
+    pull_request:
+        paths:
+            - "src/**"
+            - "tests/**"
+            - "phpunit.xml"
+            - "composer.json"
+            - "composer.lock"
+            - "ci/**"
+            - ".github/workflows/coverage.yml"
+    workflow_dispatch:
+
+# The Pages deploy authenticates via OIDC (id-token) and writes only to
+# the Pages deployment — no repo contents write, no branch pushes.
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+concurrency:
+    group: coverage-pages
+    cancel-in-progress: true
+
+jobs:
+    coverage:
+        runs-on: ubuntu-latest
+        environment:
+            # Required by the official deploy-pages action; create the
+            # "github-pages" environment in repo settings when enabling
+            # Pages.
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            # Actions are SHA-pinned (movable tags can be retargeted by the
+            # action repo's maintainers with no diff in this repo).
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+              with:
+                  # Single leg: coverage is a reporting concern, not a
+                  # compatibility matrix — tests.yml already covers 8.4/8.5
+                  # x lowest/highest.
+                  php-version: "8.4"
+                  tools: composer:v2
+                  # pcov over xdebug: same line data, a fraction of the
+                  # runtime overhead on a suite this size.
+                  coverage: pcov
+
+            - name: Cache Composer packages
+              id: composer-cache
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: vendor
+                  key: ${{ runner.os }}-php8.4-coverage-${{ hashFiles('composer.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-php8.4-coverage-
+
+            - name: Install dependencies
+              # The committed lock: the coverage numbers should describe the
+              # exact reviewed, reproducible dependency tree.
+              run: composer install --no-interaction --prefer-dist
+
+            - name: Run tests with coverage
+              # Single PHPUnit process over the full suite (phpunit.xml has
+              # no excluded groups, so the default run covers everything).
+              # One process means one coverage object: no merging, no
+              # undercount. PHPUnit renders the HTML report (native
+              # light/dark themes) and Clover XML itself; only the badge
+              # JSON needs a script.
+              run: |
+                  php vendor/bin/phpunit --no-progress \
+                      --coverage-html coverage-report \
+                      --coverage-clover coverage-report/coverage.xml \
+                      --coverage-php coverage.php
+
+            - name: Build coverage badge
+              # The one artifact PHPUnit cannot emit: the Shields endpoint
+              # JSON. A separate script (not inline php -r) so it can be
+              # syntax-checked and dry-run locally.
+              run: php ci/coverage-badge.php
+
+            - name: Upload coverage artifact
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: coverage-report
+                  # The badge JSON rides along (it is generated inside
+                  # coverage-report/) so PR runs can inspect it without a
+                  # Pages deploy.
+                  path: coverage-report
+                  retention-days: 14
+
+            # Official Pages flow: upload the report as a Pages artifact,
+            # then deploy it via the Pages API with OIDC. No gh-pages
+            # branch, no contents:write, no third-party action.
+            - name: Configure Pages
+              if: github.ref == 'refs/heads/main'
+              id: pages
+              uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+            - name: Upload Pages artifact
+              if: github.ref == 'refs/heads/main'
+              uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+              with:
+                  path: coverage-report
+
+            - name: Deploy to GitHub Pages
+              if: github.ref == 'refs/heads/main'
+              id: deployment
+              uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
