@@ -242,6 +242,36 @@ final class CollectionTest extends TestCase
         $this->assertTrue($this->users()->contains('id', [1, 2], ComparisonOperator::NotIn));
     }
 
+    public function test_contains_between_operators(): void
+    {
+        $this->assertTrue($this->users()->contains('id', [2, 3], ComparisonOperator::Between));
+        $this->assertFalse($this->users()->contains('id', [4, 5], ComparisonOperator::Between));
+        $this->assertTrue($this->users()->contains('id', [4, 5], ComparisonOperator::NotBetween));
+        $this->assertFalse($this->users()->contains('id', [1, 3], ComparisonOperator::NotBetween));
+        // Bounds are inclusive.
+        $this->assertTrue($this->users()->contains('id', [1, 1], ComparisonOperator::Between));
+    }
+
+    public function test_contains_string_operators(): void
+    {
+        $this->assertTrue($this->users()->contains('name', 'Ali', ComparisonOperator::StartsWith));
+        $this->assertFalse($this->users()->contains('name', 'ali', ComparisonOperator::StartsWith));
+        $this->assertTrue($this->users()->contains('name', 'ce', ComparisonOperator::EndsWith));
+        $this->assertFalse($this->users()->contains('name', 'Ce', ComparisonOperator::EndsWith));
+        $this->assertTrue($this->users()->contains('name', 'aro', ComparisonOperator::Contains));
+        $this->assertFalse($this->users()->contains('name', 'OBO', ComparisonOperator::Contains));
+        // Non-string column values never match string operators.
+        $this->assertFalse($this->users()->contains('id', '1', ComparisonOperator::StartsWith));
+    }
+
+    public function test_contains_strict_not_equals(): void
+    {
+        $items = Collection::make([['id' => 1], ['id' => '1']]);
+        $this->assertTrue($items->contains('id', 2, ComparisonOperator::StrictNotEquals));
+        $this->assertTrue($items->contains('id', 1, ComparisonOperator::StrictNotEquals));
+        $this->assertFalse(Collection::make([['id' => 1]])->contains('id', 1, ComparisonOperator::StrictNotEquals));
+    }
+
     public function test_contains_equals_is_strict_loose_equals_is_loose(): void
     {
         $items = Collection::make([['id' => 1], ['id' => '1']]);

@@ -19,11 +19,19 @@ enum ComparisonOperator
     case LessThanOrEqual;
     case In;
     case NotIn;
+    case Between;
+    case NotBetween;
+    case StartsWith;
+    case EndsWith;
+    case Contains;
 
     /**
-     * Compare an actual column value against a target using this operator.
+     * Compare an actual column value against `$value` using this operator.
      *
-     * `In` and `NotIn` require the target to be an array.
+     * `In` and `NotIn` require `$value` to be an array.
+     * `Between` and `NotBetween` require `$value` to be a two-element
+     * `[min, max]` array.
+     * The string operators require `$value` to be a string.
      */
     public function compare(mixed $actual, mixed $value): bool
     {
@@ -38,6 +46,19 @@ enum ComparisonOperator
             ComparisonOperator::LessThanOrEqual => $actual <= $value,
             ComparisonOperator::In => is_array($value) && in_array($actual, $value, true),
             ComparisonOperator::NotIn => is_array($value) && !in_array($actual, $value, true),
+            ComparisonOperator::Between => is_array($value)
+                && count($value) === 2
+                && $actual >= $value[0]
+                && $actual <= $value[1],
+            ComparisonOperator::NotBetween => is_array($value)
+                && count($value) === 2
+                && ($actual < $value[0] || $actual > $value[1]),
+            ComparisonOperator::StartsWith => is_string($actual) && is_string($value)
+                && str_starts_with($actual, $value),
+            ComparisonOperator::EndsWith => is_string($actual) && is_string($value)
+                && str_ends_with($actual, $value),
+            ComparisonOperator::Contains => is_string($actual) && is_string($value)
+                && str_contains($actual, $value),
         };
     }
 }
