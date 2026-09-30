@@ -96,6 +96,15 @@ jobs:
                       --coverage-clover coverage-report/coverage.xml \
                       --coverage-php coverage.php
 
+            - name: Enforce coverage threshold
+              # Fails the workflow when line coverage drops below 95%.
+              # PHPUnit has no built-in minimum-coverage option, so the
+              # check reads the Clover XML emitted above. The threshold is
+              # overridable via the COVERAGE_THRESHOLD env var (0-100).
+              env:
+                  COVERAGE_THRESHOLD: "95"
+              run: php ci/coverage-threshold.php
+
             - name: Build coverage badge
               # The one artifact PHPUnit cannot emit: the Shields endpoint
               # JSON. A separate script (not inline php -r) so it can be

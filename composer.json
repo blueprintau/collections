@@ -41,6 +41,7 @@
     "scripts": {
         "test": "phpunit",
         "analyse": "phpstan analyse --memory-limit=512M",
+        "coverage:check": "phpunit --coverage-clover coverage-report/coverage.xml && php ci/coverage-threshold.php",
         "security:audit": "composer audit --locked"
     },
     "extra": {
