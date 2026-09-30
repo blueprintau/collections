@@ -107,7 +107,7 @@ $firstFive = $lazy->take(5)->all(); // [1, 2, 3, 4, 5]
 
 ## Requirements
 
-PHP **8.3 or newer**.
+PHP **8.4 or newer**.
 
 ## Testing
 
@@ -118,7 +118,7 @@ composer analyse       # PHPStan (level 8)
 composer security:audit  # dependency security advisories
 ```
 
-CI runs the test suite across PHP 8.3 / 8.4 / 8.5 (lowest and highest
+CI runs the test suite across PHP 8.4 / 8.5 (lowest and highest
 dependencies) on every push and pull request. Releases are cut from the
 **Release** workflow (Actions → Release), which takes a version tag, verifies
 it does not already exist, runs the full test suite, then creates the tag and
