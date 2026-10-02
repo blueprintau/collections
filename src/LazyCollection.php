@@ -376,7 +376,7 @@ class LazyCollection implements Enumerable
      *
      * Non-numeric items throw a TypeError, matching the eager implementation.
      *
-     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @param  (TValue is array ? key-of<TValue> : string)|(callable(TValue): (int|float))|null $column
      * @return  int|float
      */
     public function sum(int|string|callable|null $column = null): int|float
@@ -406,7 +406,7 @@ class LazyCollection implements Enumerable
      * Count and sum are accumulated in a single pass, which matters for
      * one-shot sources.
      *
-     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @param  (TValue is array ? key-of<TValue> : string)|(callable(TValue): (int|float))|null $column
      * @return  int|float
      */
     public function avg(int|string|callable|null $column = null): int|float
@@ -830,7 +830,7 @@ class LazyCollection implements Enumerable
      *
      * This is a terminal operation — the stream is consumed.
      *
-     * @param  string|callable(TValue): mixed $column
+     * @param  string|(callable(TValue): mixed) $column
      * @param  int $options
      * @param  bool $descending
      * @return  static

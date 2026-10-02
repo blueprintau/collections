@@ -305,7 +305,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Non-numeric items throw a TypeError, matching the lazy implementation.
      *
-     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @param  (TValue is array ? key-of<TValue> : string)|(callable(TValue): (int|float))|null $column
      * @return  int|float
      */
     public function sum(int|string|callable|null $column = null): int|float
@@ -332,7 +332,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Returns 0 for an empty collection.
      *
-     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @param  (TValue is array ? key-of<TValue> : string)|(callable(TValue): (int|float))|null $column
      * @return  int|float
      */
     public function avg(int|string|callable|null $column = null): int|float
@@ -705,7 +705,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *  - SORT_REGULAR (default) — numeric-aware when both values are numeric,
      *    otherwise lexical
      *
-     * @param  string|callable(TValue): mixed $column
+     * @param  string|(callable(TValue): mixed) $column
      * @param  int $options
      * @param  bool $descending
      * @return  static

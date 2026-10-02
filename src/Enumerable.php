@@ -99,7 +99,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Sum the collection's values, or a single column of each item.
      *
-     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @param  (TValue is array ? key-of<TValue> : string)|(callable(TValue): (int|float))|null $column
      * @return  int|float
      */
     public function sum(int|string|callable|null $column = null): int|float;
@@ -107,7 +107,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     /**
      * Average the collection's values, or a single column of each item.
      *
-     * @param  (TValue is array ? key-of<TValue> : string)|callable(TValue): (int|float)|null $column
+     * @param  (TValue is array ? key-of<TValue> : string)|(callable(TValue): (int|float))|null $column
      * @return  int|float
      */
     public function avg(int|string|callable|null $column = null): int|float;
