@@ -246,7 +246,9 @@ final class LazyCollectionTest extends TestCase
 
     public function test_min_empty_returns_null(): void
     {
-        $this->assertNull((LazyCollection::make([]))->min());
+        /** @var LazyCollection<int, int> $empty */
+        $empty = LazyCollection::make([]);
+        $this->assertNull($empty->min());
     }
 
     public function test_max(): void
@@ -256,7 +258,9 @@ final class LazyCollectionTest extends TestCase
 
     public function test_max_empty_returns_null(): void
     {
-        $this->assertNull((LazyCollection::make([]))->max());
+        /** @var LazyCollection<int, int> $empty */
+        $empty = LazyCollection::make([]);
+        $this->assertNull($empty->max());
     }
 
     public function test_count(): void

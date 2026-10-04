@@ -119,7 +119,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      *
      * @template  TColumn
      * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @return  ($column is null ? (TValue is array ? value-of<TValue> : mixed)|null : ($column is callable ? TColumn : (TValue is array ? value-of<TValue> : mixed)))
      */
     public function min(int|string|callable|null $column = null): mixed;
 
@@ -130,7 +130,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      *
      * @template  TColumn
      * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @return  ($column is null ? (TValue is array ? value-of<TValue> : mixed)|null : ($column is callable ? TColumn : (TValue is array ? value-of<TValue> : mixed)))
      */
     public function max(int|string|callable|null $column = null): mixed;
 

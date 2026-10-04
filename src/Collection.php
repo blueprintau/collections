@@ -38,8 +38,11 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * Convenience static factory equivalent to `new static($items)`.
      *
-     * @param  iterable<TKey, TValue> $items
-     * @return  static
+     * @template  TMakeKey of array-key
+     * @template  TMakeValue
+     *
+     * @param  iterable<TMakeKey, TMakeValue> $items
+     * @return  static<TMakeKey, TMakeValue>
      */
     public static function make(iterable $items = []): static
     {
@@ -53,8 +56,10 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * an array it is used directly; otherwise it is wrapped in a single-item
      * collection. Useful for normalizing "one or many" inputs.
      *
-     * @param  mixed $value
-     * @return  static
+     * @template  TWrapValue
+     *
+     * @param  TWrapValue $value
+     * @return  (TWrapValue is static ? TWrapValue : (TWrapValue is array ? static<int|string, value-of<TWrapValue>> : static<int, TWrapValue>))
      */
     public static function wrap(mixed $value): static
     {
@@ -70,9 +75,11 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * The callback receives the 1-based index.
      *
+     * @template  TTimesValue
+     *
      * @param  int $number
-     * @param  (callable(int): TValue)|null $callback
-     * @return  static
+     * @param  (callable(int): TTimesValue)|null $callback
+     * @return  ($callback is null ? static<int, int> : static<int, TTimesValue>)
      */
     public static function times(int $number, ?callable $callback = null): static
     {
@@ -80,7 +87,17 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
             return new static();
         }
 
-        return (new static(range(1, $number)))->map($callback ?? fn ($i) => $i);
+        if ($callback === null) {
+            /** @var static<int, int> $sequence */
+            $sequence = new static(range(1, $number));
+
+            return $sequence;
+        }
+
+        /** @var static<int, TTimesValue> $result */
+        $result = (new static(range(1, $number)))->map($callback);
+
+        return $result;
     }
 
     /**
@@ -93,7 +110,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      * @param  int|float|string $from
      * @param  int|float|string $to
      * @param  int|float $step
-     * @return  static
+     * @return  static<int, int|float|string>
      */
     public static function range(int|float|string $from, int|float|string $to, int|float $step = 1): static
     {
@@ -349,7 +366,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * @template  TColumn
      * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @return  ($column is null ? (TValue is array ? value-of<TValue> : mixed)|null : ($column is callable ? TColumn : (TValue is array ? value-of<TValue> : mixed)))
      */
     public function min(int|string|callable|null $column = null): mixed
     {
@@ -375,7 +392,7 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
      *
      * @template  TColumn
      * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @return  ($column is null ? (TValue is array ? value-of<TValue> : mixed)|null : ($column is callable ? TColumn : (TValue is array ? value-of<TValue> : mixed)))
      */
     public function max(int|string|callable|null $column = null): mixed
     {

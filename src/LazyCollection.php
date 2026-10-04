@@ -50,8 +50,11 @@ class LazyCollection implements Enumerable
     /**
      * Create a new lazy collection from the given source.
      *
-     * @param  iterable<TKey, TValue>|(callable(): \Generator<TKey, TValue, mixed, void>) $source
-     * @return  static
+     * @template  TMakeKey of array-key
+     * @template  TMakeValue
+     *
+     * @param  (iterable<TMakeKey, TMakeValue>|(callable(): \Generator<TMakeKey, TMakeValue, mixed, void>)) $source
+     * @return  static<TMakeKey, TMakeValue>
      */
     public static function make(iterable|callable $source = []): static
     {
@@ -65,8 +68,10 @@ class LazyCollection implements Enumerable
      * it is an array it is used directly; otherwise it is wrapped in a
      * single-item collection.
      *
-     * @param  mixed $value
-     * @return  static
+     * @template  TWrapValue
+     *
+     * @param  TWrapValue $value
+     * @return  (TWrapValue is static ? TWrapValue : (TWrapValue is array ? static<int|string, value-of<TWrapValue>> : static<int, TWrapValue>))
      */
     public static function wrap(mixed $value): static
     {
@@ -82,9 +87,11 @@ class LazyCollection implements Enumerable
      *
      * The callback receives the 1-based index.
      *
+     * @template  TTimesValue
+     *
      * @param  int $number
-     * @param  (callable(int): TValue)|null $callback
-     * @return  static<int, TValue>
+     * @param  (callable(int): TTimesValue)|null $callback
+     * @return  ($callback is null ? static<int, int> : static<int, TTimesValue>)
      */
     public static function times(int $number, ?callable $callback = null): static
     {
@@ -92,11 +99,21 @@ class LazyCollection implements Enumerable
             return new static();
         }
 
-        return new static(static function () use ($number, $callback): \Generator {
+        if ($callback === null) {
+            /** @var static<int, int> $sequence */
+            $sequence = new static(range(1, $number));
+
+            return $sequence;
+        }
+
+        /** @var static<int, TTimesValue> $result */
+        $result = new static(static function () use ($number, $callback): \Generator {
             for ($i = 1; $i <= $number; $i++) {
-                yield $callback === null ? $i : $callback($i);
+                yield $callback($i);
             }
         });
+
+        return $result;
     }
 
     /**
@@ -109,7 +126,7 @@ class LazyCollection implements Enumerable
      * @param  int|float|string $from
      * @param  int|float|string $to
      * @param  int|float $step
-     * @return  static
+     * @return  static<int, int|float|string>
      */
     public static function range(int|float|string $from, int|float|string $to, int|float $step = 1): static
     {
@@ -430,7 +447,7 @@ class LazyCollection implements Enumerable
      *
      * @template  TColumn
      * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @return  ($column is null ? (TValue is array ? value-of<TValue> : mixed)|null : ($column is callable ? TColumn : (TValue is array ? value-of<TValue> : mixed)))
      */
     public function min(int|string|callable|null $column = null): mixed
     {
@@ -456,7 +473,7 @@ class LazyCollection implements Enumerable
      *
      * @template  TColumn
      * @param  (callable(TValue): TColumn)|(TValue is array ? key-of<TValue> : string)|null $column
-     * @return  TColumn|TValue|(TValue is array ? value-of<TValue> : mixed)|null
+     * @return  ($column is null ? (TValue is array ? value-of<TValue> : mixed)|null : ($column is callable ? TColumn : (TValue is array ? value-of<TValue> : mixed)))
      */
     public function max(int|string|callable|null $column = null): mixed
     {

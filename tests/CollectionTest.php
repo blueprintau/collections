@@ -337,8 +337,10 @@ final class CollectionTest extends TestCase
 
     public function test_first_default(): void
     {
-        $this->assertNull((Collection::make([]))->first());
-        $this->assertSame('fallback', (Collection::make([]))->first(null, 'fallback'));
+        /** @var Collection<int, string> $empty */
+        $empty = Collection::make([]);
+        $this->assertNull($empty->first());
+        $this->assertSame('fallback', $empty->first(null, 'fallback'));
     }
 
     public function test_last(): void
