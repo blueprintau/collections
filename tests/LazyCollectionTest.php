@@ -558,4 +558,209 @@ final class LazyCollectionTest extends TestCase
         ]);
         $this->assertCount(2, $items->unique('tags')->values()->all());
     }
+
+    // ---- filterMap / reject ----
+
+    public function test_filter_map_drops_nulls_and_streams(): void
+    {
+        $c = LazyCollection::make([1, 2, 3, 4]);
+        $this->assertSame([1 => 4, 3 => 8], $c->filterMap(fn ($v) => $v % 2 === 0 ? $v * 2 : null)->all());
+    }
+
+    public function test_filter_map_preserves_falsy_values(): void
+    {
+        $c = LazyCollection::make([1, 0, '', false, 'x']);
+        $this->assertSame([0 => 1, 1 => 0, 2 => '', 3 => false], $c->filterMap(fn ($v) => $v === 'x' ? null : $v)->all());
+    }
+
+    public function test_reject_drops_failing_items(): void
+    {
+        $c = LazyCollection::make([1, 2, 3, 4]);
+        $this->assertSame([1 => 2, 3 => 4], $c->reject(fn ($v) => $v % 2 === 1)->all());
+    }
+
+    public function test_reject_without_callback_drops_truthy(): void
+    {
+        $c = LazyCollection::make([0, 1, '', 'x', false, null]);
+        $this->assertSame([0, '', false, null], $c->reject()->values()->all());
+    }
+
+    // ---- takeWhile / skipWhile / takeUntil / skipUntil ----
+
+    public function test_take_while_stops_at_first_failure(): void
+    {
+        $c = LazyCollection::make([1, 2, 3, 1, 2]);
+        $this->assertSame([0 => 1, 1 => 2], $c->takeWhile(fn ($v) => $v < 3)->all());
+    }
+
+    public function test_take_while_on_infinite_generator_terminates(): void
+    {
+        $c = LazyCollection::make($this->infinite());
+        $this->assertSame([1, 2, 3], $c->takeWhile(fn ($v) => $v < 4)->values()->all());
+    }
+
+    public function test_take_until_on_infinite_generator_terminates(): void
+    {
+        $c = LazyCollection::make($this->infinite());
+        $this->assertSame([1, 2], $c->takeUntil(fn ($v) => $v === 3)->values()->all());
+    }
+
+    public function test_skip_while_keeps_after_first_failure(): void
+    {
+        $c = LazyCollection::make([1, 2, 1, 4, 5]);
+        $this->assertSame([3 => 4, 4 => 5], $c->skipWhile(fn ($v) => $v < 3)->all());
+    }
+
+    public function test_skip_while_streams_after_first_failure(): void
+    {
+        $seen = 0;
+        $c = LazyCollection::make(function () use (&$seen): \Generator {
+            foreach ([1, 2, 9, 1, 9] as $v) {
+                $seen++;
+                yield $v;
+            }
+        });
+        $result = $c->skipWhile(fn ($v) => $v < 3)->take(2)->values()->all();
+        $this->assertSame([9, 1], $result);
+        // take() pulls one item ahead of its limit check (pull-then-break),
+        // so the source sees all 5 items even though only 2 are yielded —
+        // the final 9 is pulled but never reaches the consumer.
+        $this->assertSame(5, $seen);
+    }
+
+    public function test_skip_until_keeps_from_first_success(): void
+    {
+        $c = LazyCollection::make([1, 2, 3, 1, 2]);
+        $this->assertSame([2 => 3, 3 => 1, 4 => 2], $c->skipUntil(fn ($v) => $v === 3)->all());
+    }
+
+    public function test_take_while_receives_key(): void
+    {
+        $c = LazyCollection::make(['a' => 1, 'b' => 2, 'c' => 9]);
+        $this->assertSame(['a' => 1, 'b' => 2], $c->takeWhile(fn ($v, $k) => $k !== 'c')->all());
+    }
+
+    // ---- isEmpty / isNotEmpty ----
+
+    public function test_is_empty_and_is_not_empty(): void
+    {
+        $this->assertTrue(LazyCollection::make([])->isEmpty());
+        $this->assertFalse(LazyCollection::make([])->isNotEmpty());
+        $this->assertFalse(LazyCollection::make([1])->isEmpty());
+        $this->assertTrue(LazyCollection::make([1])->isNotEmpty());
+    }
+
+    public function test_is_empty_pulls_at_most_one_item(): void
+    {
+        $pulled = 0;
+        $c = LazyCollection::make(function () use (&$pulled): \Generator {
+            foreach ([1, 2, 3] as $v) {
+                $pulled++;
+                yield $v;
+            }
+        });
+        $this->assertFalse($c->isEmpty());
+        $this->assertSame(1, $pulled);
+    }
+
+    // ---- sole ----
+
+    public function test_sole_returns_the_single_item(): void
+    {
+        $this->assertSame(5, LazyCollection::make([5])->sole());
+    }
+
+    public function test_sole_by_value(): void
+    {
+        $this->assertSame(3, LazyCollection::make([1, 3, 2])->sole(3));
+    }
+
+    public function test_sole_no_match_throws(): void
+    {
+        $c = LazyCollection::make([1, 2]);
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('Item not found');
+        $c->sole(99);
+    }
+
+    public function test_sole_multiple_matches_throws(): void
+    {
+        $c = LazyCollection::make([3, 3]);
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('2 items match');
+        $c->sole(3);
+    }
+
+    public function test_sole_three_or_more_matches_stops_pulling(): void
+    {
+        $pulled = 0;
+        $c = LazyCollection::make(function () use (&$pulled): \Generator {
+            foreach ([3, 3, 3, 4, 5, 6, 7, 8] as $v) {
+                $pulled++;
+                yield $v;
+            }
+        });
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('2 or more items match');
+        try {
+            $c->sole(3);
+        } finally {
+            // The stream stops at the third match — the tail is never pulled.
+            $this->assertSame(3, $pulled);
+        }
+    }
+
+    public function test_sole_by_column_and_operator(): void
+    {
+        $c = LazyCollection::make([
+            ['id' => 1, 'role' => 'admin'],
+            ['id' => 2, 'role' => 'user'],
+        ]);
+        $this->assertSame(['id' => 1, 'role' => 'admin'], $c->sole('role', 'admin'));
+        $this->assertSame(['id' => 1, 'role' => 'admin'], $c->sole('id', 2, ComparisonOperator::LessThan));
+    }
+
+    // ---- firstWhere / whereNull / whereNotNull ----
+
+    public function test_first_where(): void
+    {
+        $c = LazyCollection::make([
+            ['id' => 1, 'role' => 'admin'],
+            ['id' => 2, 'role' => 'user'],
+            ['id' => 3, 'role' => 'user'],
+        ]);
+        $this->assertSame(['id' => 2, 'role' => 'user'], $c->firstWhere('role', 'user'));
+        $this->assertNull($c->firstWhere('role', 'missing'));
+    }
+
+    public function test_where_null_on_items_and_column(): void
+    {
+        $c = LazyCollection::make([1, null, ['x' => null]]);
+        $this->assertSame([0 => null], $c->whereNull()->values()->all());
+        // On a scalar item, a missing column reads as null, so every item
+        // matches whereNull('x') — including the null item itself.
+        $this->assertSame([0 => 1, 1 => null, 2 => ['x' => null]], $c->whereNull('x')->values()->all());
+        // Keys are reindexed by values() after the null item is dropped.
+        $this->assertSame([0 => 1, 1 => ['x' => null]], $c->whereNotNull()->values()->all());
+        // whereNotNull('x') keeps only items whose 'x' column is set.
+        $this->assertSame([], $c->whereNotNull('x')->values()->all());
+    }
+
+    // ---- implode ----
+
+    public function test_implode(): void
+    {
+        $this->assertSame('1,2,3', LazyCollection::make([1, 2, 3])->implode(','));
+    }
+
+    public function test_implode_with_column(): void
+    {
+        $c = LazyCollection::make([['name' => 'Alice'], ['name' => 'Bob']]);
+        $this->assertSame('Alice|Bob', $c->implode('|', 'name'));
+    }
+
+    public function test_implode_empty_returns_empty_string(): void
+    {
+        $this->assertSame('', LazyCollection::make([])->implode('|'));
+    }
 }

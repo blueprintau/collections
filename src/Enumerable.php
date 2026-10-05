@@ -74,7 +74,7 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
     public function mapWithKeys(callable $callback): static;
 
     /**
-     * Map each item through a callback, then collapse the result one level.
+     * Map each item through a callback, collapsing one level.
      *
      * The callback may return any array; string keys survive the collapse and
      * integer keys are renumbered, so the resulting key type is int|string.
@@ -83,6 +83,27 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * @return  static<int|string, mixed>
      */
     public function flatMap(callable $callback): static;
+
+    /**
+     * Map each item through a callback, dropping null results.
+     *
+     * Keys are preserved — call `values()` to renumber to a 0-based list.
+     *
+     * @template  TNewValue
+     * @param  callable(TValue, TKey): (TNewValue|null) $callback
+     * @return  static<TKey, TNewValue>
+     */
+    public function filterMap(callable $callback): static;
+
+    /**
+     * Filter the collection to items that fail the given callback.
+     *
+     * When no callback is given, truthy items are dropped. Keys are preserved.
+     *
+     * @param  (callable(TValue, TKey): bool)|null $callback
+     * @return  static
+     */
+    public function reject(?callable $callback = null): static;
 
     // ---- Reductions (lazy-compatible) ----
 
@@ -174,6 +195,80 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      */
     public function some(callable $callback): bool;
 
+    /**
+     * Determine whether the collection is empty.
+     *
+     * @return  bool
+     */
+    public function isEmpty(): bool;
+
+    /**
+     * Determine whether the collection is not empty.
+     *
+     * @return  bool
+     */
+    public function isNotEmpty(): bool;
+
+    /**
+     * Get the single item matching the given criteria.
+     *
+     * With no arguments the collection must hold exactly one item. With one
+     * argument, matching is strict value equality — a callable value is
+     * checked as a value, never invoked as a predicate. With a column and
+     * value, the column is compared using the given operator.
+     *
+     * @param  mixed  $key  A value to find, or a column name for the comparison form.
+     * @param  mixed  $value  The value the column is compared against.
+     * @param  ComparisonOperator  $operator
+     * @return  TValue
+     *
+     * @throws \LogicException When no item, two items, or three or more items match.
+     */
+    public function sole(mixed $key = null, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): mixed;
+
+    /**
+     * Get the first item whose column matches a value.
+     *
+     * Returns null when nothing matches — chain `first()` for a custom default.
+     *
+     * @param  (TValue is array ? key-of<TValue> : string) $key
+     * @param  mixed $value
+     * @param  ComparisonOperator $operator
+     * @return  TValue|null
+     */
+    public function firstWhere(int|string $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): mixed;
+
+    /**
+     * Filter the collection to items that are null.
+     *
+     * With no column, the item itself is checked; otherwise the column's
+     * value is checked. Keys are preserved.
+     *
+     * @param  ((TValue is array ? key-of<TValue> : string)|null) $key
+     * @return  static
+     */
+    public function whereNull(int|string|null $key = null): static;
+
+    /**
+     * Filter the collection to items that are not null.
+     *
+     * With no column, the item itself is checked; otherwise the column's
+     * value is checked. Keys are preserved.
+     *
+     * @param  ((TValue is array ? key-of<TValue> : string)|null) $key
+     * @return  static
+     */
+    public function whereNotNull(int|string|null $key = null): static;
+
+    /**
+     * Join the collection's values, or a single column of each item.
+     *
+     * @param  string $glue
+     * @param  ((TValue is array ? key-of<TValue> : string)|null) $column
+     * @return  string
+     */
+    public function implode(string $glue, int|string|null $column = null): string;
+
     // ---- Iteration (lazy-compatible) ----
 
     /**
@@ -244,6 +339,49 @@ interface Enumerable extends \IteratorAggregate, \JsonSerializable
      * @return  static
      */
     public function slice(int $offset, ?int $length = null): static;
+
+    /**
+     * Take items while the callback passes, stopping at the first failure.
+     *
+     * Keys are preserved.
+     *
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  static
+     */
+    public function takeWhile(callable $callback): static;
+
+    /**
+     * Skip items while the callback passes, keeping the rest.
+     *
+     * Only the initial run of passing items is skipped — after the first
+     * failure, every remaining item is kept even if the callback passes
+     * again. Keys are preserved.
+     *
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  static
+     */
+    public function skipWhile(callable $callback): static;
+
+    /**
+     * Take items until the callback passes, stopping at the first success.
+     *
+     * Keys are preserved.
+     *
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  static
+     */
+    public function takeUntil(callable $callback): static;
+
+    /**
+     * Skip items until the callback passes, keeping the rest.
+     *
+     * The item on which the callback first passes is the first kept item.
+     * Keys are preserved.
+     *
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  static
+     */
+    public function skipUntil(callable $callback): static;
 
     /**
      * Convert the collection to a plain array.

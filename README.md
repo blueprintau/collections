@@ -38,11 +38,20 @@ $byRole = $users->groupBy('role');                 // ['admin' => [...], 'user' 
 $admins = $users->filter(fn ($u) => $u['role'] === 'admin');  // [Alice]
 $upper  = $users->map(fn ($u) => strtoupper($u['name']));     // ['ALICE', 'BOB', 'CAROL']
 
+// Predicate & streaming transforms
+$young  = $users->filterMap(fn ($u) => $u['age'] < 18 ? $u['name'] : null);  // nulls dropped, keys preserved
+$notAdmin = $users->reject(fn ($u) => $u['role'] === 'admin');
+$prefix = Collection::make([1, 2, 3, 9])->takeWhile(fn ($v) => $v < 3);  // [1, 2]
+$from3  = Collection::make([1, 2, 3, 9])->skipUntil(fn ($v) => $v === 3); // [3, 9]
+
 // Reductions
 $count    = $users->count();                       // 3
 $total    = Collection::make([1, 2, 3,  ̀4])->sum(); // 10
 $avg      = Collection::make([1, 2, 3, 4])->avg(); // 2.5
 $hasAdmin = $users->contains(fn ($u) => $u['role'] === 'admin');  // true
+$empty    = $users->isNotEmpty();                  // true
+$only     = $users->sole('id', 1);                 // Alice's row (throws on 0 or 2+ matches)
+$csv      = $users->implode(', ', 'name');         // 'Alice, Bob, Carol'
 
 // Selection
 $firstTwo = $users->take(2);                       // [Alice, Bob]
@@ -56,6 +65,7 @@ $unique   = Collection::make([1, 1, 2,  ̀3,  ̀3])->unique();  // [1, 2, 3]
 // Iteration
 $users->each(fn ($u) => print($u['name'] . "\n")); // Alice Bob Carol
 $first = $users->first();                          // Alice's row
+$firstUser = $users->firstWhere('role', 'user');   // Bob's row
 
 // Conversion
 $array = $users->toArray();                        // plain array

@@ -547,4 +547,239 @@ final class CollectionTest extends TestCase
         ]);
         $this->assertCount(2, $items->unique('tags'));
     }
+
+    // ---- filterMap / reject ----
+
+    public function test_filter_map_drops_nulls(): void
+    {
+        $c = Collection::make([1, 2, 3, 4]);
+        $this->assertSame([1 => 4, 3 => 8], $c->filterMap(fn ($v) => $v % 2 === 0 ? $v * 2 : null)->all());
+    }
+
+    public function test_filter_map_preserves_falsy_values(): void
+    {
+        $c = Collection::make([1, 0, '', false, 'x']);
+        $this->assertSame([0 => 1, 1 => 0, 2 => '', 3 => false], $c->filterMap(fn ($v) => $v === 'x' ? null : $v)->all());
+    }
+
+    public function test_filter_map_receives_key(): void
+    {
+        $c = Collection::make(['a' => 1, 'b' => 2]);
+        $this->assertSame(['b' => 'b:2'], $c->filterMap(fn ($v, $k) => $v > 1 ? "$k:$v" : null)->all());
+    }
+
+    public function test_reject_drops_failing_items(): void
+    {
+        $c = Collection::make([1, 2, 3, 4]);
+        $this->assertSame([1 => 2, 3 => 4], $c->reject(fn ($v) => $v % 2 === 1)->all());
+    }
+
+    public function test_reject_receives_key(): void
+    {
+        $c = Collection::make(['a' => 1, 'b' => 2]);
+        $this->assertSame(['b' => 2], $c->reject(fn ($v, $k) => $k === 'a')->all());
+    }
+
+    // ---- takeWhile / skipWhile / takeUntil / skipUntil ----
+
+    public function test_take_while_stops_at_first_failure(): void
+    {
+        $c = Collection::make([1, 2, 3, 1, 2]);
+        $this->assertSame([0 => 1, 1 => 2], $c->takeWhile(fn ($v) => $v < 3)->all());
+    }
+
+    public function test_take_while_all_pass_keeps_everything(): void
+    {
+        $c = Collection::make([1, 2, 3]);
+        $this->assertSame([0 => 1, 1 => 2, 2 => 3], $c->takeWhile(fn ($v) => $v < 10)->all());
+    }
+
+    public function test_take_while_empty_returns_empty(): void
+    {
+        $c = Collection::make([]);
+        $this->assertSame([], $c->takeWhile(fn ($v) => true)->all());
+    }
+
+    public function test_take_while_receives_key(): void
+    {
+        $c = Collection::make(['a' => 1, 'b' => 2, 'c' => 9]);
+        $this->assertSame(['a' => 1, 'b' => 2], $c->takeWhile(fn ($v, $k) => $k !== 'c')->all());
+    }
+
+    public function test_skip_while_keeps_after_first_failure(): void
+    {
+        $c = Collection::make([1, 2, 1, 4, 5]);
+        $this->assertSame([3 => 4, 4 => 5], $c->skipWhile(fn ($v) => $v < 3)->all());
+    }
+
+    public function test_skip_while_all_pass_returns_empty(): void
+    {
+        $c = Collection::make([1, 2, 3]);
+        $this->assertSame([], $c->skipWhile(fn ($v) => $v < 10)->all());
+    }
+
+    public function test_skip_while_receives_key(): void
+    {
+        $c = Collection::make(['a' => 1, 'b' => 2, 'c' => 9]);
+        $this->assertSame(['c' => 9], $c->skipWhile(fn ($v, $k) => $k !== 'c')->all());
+    }
+
+    public function test_take_until_stops_at_first_success(): void
+    {
+        $c = Collection::make([1, 2, 3, 1, 2]);
+        $this->assertSame([0 => 1, 1 => 2], $c->takeUntil(fn ($v) => $v === 3)->all());
+    }
+
+    public function test_take_until_never_passes_keeps_everything(): void
+    {
+        $c = Collection::make([1, 2, 3]);
+        $this->assertSame([0 => 1, 1 => 2, 2 => 3], $c->takeUntil(fn ($v) => $v === 10)->all());
+    }
+
+    public function test_skip_until_keeps_from_first_success(): void
+    {
+        $c = Collection::make([1, 2, 3, 1, 2]);
+        $this->assertSame([2 => 3, 3 => 1, 4 => 2], $c->skipUntil(fn ($v) => $v === 3)->all());
+    }
+
+    public function test_skip_until_never_passes_returns_empty(): void
+    {
+        $c = Collection::make([1, 2, 3]);
+        $this->assertSame([], $c->skipUntil(fn ($v) => $v === 10)->all());
+    }
+
+    // ---- isEmpty / isNotEmpty ----
+
+    public function test_is_empty_and_is_not_empty(): void
+    {
+        $this->assertTrue(Collection::make([])->isEmpty());
+        $this->assertFalse(Collection::make([])->isNotEmpty());
+        $this->assertFalse(Collection::make([1])->isEmpty());
+        $this->assertTrue(Collection::make([1])->isNotEmpty());
+    }
+
+    // ---- sole ----
+
+    public function test_sole_returns_the_single_item(): void
+    {
+        $this->assertSame(5, Collection::make([5])->sole());
+    }
+
+    public function test_sole_by_value(): void
+    {
+        $this->assertSame(3, Collection::make([1, 3, 2])->sole(3));
+    }
+
+    public function test_sole_by_value_is_strict(): void
+    {
+        $c = Collection::make([1, '1', 3]);
+        $this->assertSame(1, $c->sole(1));
+        $this->assertSame('1', $c->sole('1'));
+    }
+
+    public function test_sole_by_value_never_invokes_callables(): void
+    {
+        $invocations = 0;
+        $c = Collection::make([1, 2, 3]);
+        try {
+            $c->sole(fn ($v) => $invocations++);
+        } catch (\LogicException) {
+        }
+        $this->assertSame(0, $invocations);
+    }
+
+    public function test_sole_no_match_throws(): void
+    {
+        $c = Collection::make([1, 2]);
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('Item not found');
+        $c->sole(99);
+    }
+
+    public function test_sole_multiple_matches_throws(): void
+    {
+        $c = Collection::make([3, 3]);
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('2 items match');
+        $c->sole(3);
+    }
+
+    public function test_sole_three_or_more_matches_throws_without_counting_the_tail(): void
+    {
+        $c = Collection::make([3, 3, 3, 3, 3]);
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('2 or more items match');
+        $c->sole(3);
+    }
+
+    public function test_sole_by_column_and_operator(): void
+    {
+        $c = Collection::make([
+            ['id' => 1, 'role' => 'admin'],
+            ['id' => 2, 'role' => 'user'],
+        ]);
+        $this->assertSame(['id' => 1, 'role' => 'admin'], $c->sole('role', 'admin'));
+        $this->assertSame(['id' => 1, 'role' => 'admin'], $c->sole('id', 2, ComparisonOperator::LessThan));
+    }
+
+    // ---- firstWhere ----
+
+    public function test_first_where(): void
+    {
+        $c = Collection::make([
+            ['id' => 1, 'role' => 'admin'],
+            ['id' => 2, 'role' => 'user'],
+            ['id' => 3, 'role' => 'user'],
+        ]);
+        $this->assertSame(['id' => 2, 'role' => 'user'], $c->firstWhere('role', 'user'));
+    }
+
+    public function test_first_where_no_match_returns_null(): void
+    {
+        $c = Collection::make([['role' => 'admin']]);
+        $this->assertNull($c->firstWhere('role', 'user'));
+    }
+
+    public function test_first_where_operator(): void
+    {
+        $c = Collection::make([['id' => 5], ['id' => 10]]);
+        $this->assertSame(['id' => 10], $c->firstWhere('id', 10, ComparisonOperator::GreaterThanOrEqual));
+    }
+
+    // ---- whereNull / whereNotNull ----
+
+    public function test_where_null_on_items(): void
+    {
+        $c = Collection::make([1, null, 2, null]);
+        $this->assertSame([1 => null, 3 => null], $c->whereNull()->all());
+        $this->assertSame([0 => 1, 2 => 2], $c->whereNotNull()->all());
+    }
+
+    public function test_where_null_on_column(): void
+    {
+        $c = Collection::make([
+            ['id' => 1, 'nickname' => 'Al'],
+            ['id' => 2, 'nickname' => null],
+        ]);
+        $this->assertSame([1 => ['id' => 2, 'nickname' => null]], $c->whereNull('nickname')->all());
+        $this->assertSame([0 => ['id' => 1, 'nickname' => 'Al']], $c->whereNotNull('nickname')->all());
+    }
+
+    // ---- implode ----
+
+    public function test_implode(): void
+    {
+        $this->assertSame('1,2,3', Collection::make([1, 2, 3])->implode(','));
+    }
+
+    public function test_implode_with_column(): void
+    {
+        $c = Collection::make([['name' => 'Alice'], ['name' => 'Bob']]);
+        $this->assertSame('Alice|Bob', $c->implode('|', 'name'));
+    }
+
+    public function test_implode_empty_returns_empty_string(): void
+    {
+        $this->assertSame('', Collection::make([])->implode('|'));
+    }
 }

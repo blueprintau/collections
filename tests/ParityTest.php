@@ -339,6 +339,81 @@ final class ParityTest extends TestCase
         $this->assertSame($eager->toArray(), $lazy->toArray());
     }
 
+    // ---- Predicate & streaming transforms ----
+
+    /**
+     * @param array<int|string, mixed> $items
+     */
+    #[DataProvider('sampleInputs')]
+    public function test_predicate_transform_parity(array $items): void
+    {
+        [$eager, $lazy] = $this->pair($items);
+
+        $isThree = fn ($v, $k) => $v === 3;
+        $nullIfThree = fn ($v, $k) => $v === 3 ? null : $v;
+        $this->assertSame($eager->filterMap($nullIfThree)->all(), $lazy->filterMap($nullIfThree)->all());
+        $this->assertSame($eager->reject()->all(), $lazy->reject()->all());
+        $this->assertSame($eager->reject($isThree)->all(), $lazy->reject($isThree)->all());
+        $this->assertSame($eager->takeWhile(fn ($v) => is_numeric($v))->all(), $lazy->takeWhile(fn ($v) => is_numeric($v))->all());
+        $this->assertSame($eager->skipWhile(fn ($v) => is_numeric($v))->all(), $lazy->skipWhile(fn ($v) => is_numeric($v))->all());
+        $this->assertSame($eager->takeUntil(fn ($v) => $v === 3)->all(), $lazy->takeUntil(fn ($v) => $v === 3)->all());
+        $this->assertSame($eager->skipUntil(fn ($v) => $v === 3)->all(), $lazy->skipUntil(fn ($v) => $v === 3)->all());
+        $this->assertSame($eager->whereNull()->all(), $lazy->whereNull()->all());
+        $this->assertSame($eager->whereNotNull()->all(), $lazy->whereNotNull()->all());
+        $this->assertSame($eager->whereNull('missing')->all(), $lazy->whereNull('missing')->all());
+        $this->assertSame($eager->whereNotNull('missing')->all(), $lazy->whereNotNull('missing')->all());
+    }
+
+    /**
+     * @param array<int|string, mixed> $items
+     */
+    #[DataProvider('sampleInputs')]
+    public function test_predicate_reduction_parity(array $items): void
+    {
+        [$eager, $lazy] = $this->pair($items);
+
+        $this->assertSame($eager->isEmpty(), $lazy->isEmpty());
+        $this->assertSame($eager->isNotEmpty(), $lazy->isNotEmpty());
+        $this->assertSame($eager->firstWhere(0, 3), $lazy->firstWhere(0, 3));
+        // Only string-castable items implode safely — the rows fixture holds
+        // arrays, so it would trigger an Array-to-string conversion.
+        if (array_filter($items, 'is_array') === []) {
+            $this->assertSame($eager->implode('|'), $lazy->implode('|'));
+        }
+    }
+
+    /**
+     * @param array<int|string, mixed> $items
+     */
+    #[DataProvider('sampleInputs')]
+    public function test_sole_parity(array $items): void
+    {
+        [$eager, $lazy] = $this->pair($items);
+
+        try {
+            $eagerResult = $eager->sole(3);
+        } catch (\LogicException $e) {
+            $eagerResult = get_class($e);
+        }
+        try {
+            $lazyResult = $lazy->sole(3);
+        } catch (\LogicException $e) {
+            $lazyResult = get_class($e);
+        }
+        $this->assertSame($eagerResult, $lazyResult);
+    }
+
+    public function test_sole_column_form_parity(): void
+    {
+        $items = [
+            ['id' => 1, 'role' => 'admin'],
+            ['id' => 2, 'role' => 'user'],
+        ];
+        [$eager, $lazy] = $this->pair($items);
+
+        $this->assertSame($eager->sole('role', 'admin'), $lazy->sole('role', 'admin'));
+    }
+
     /**
      * @param array<int|string, mixed> $items
      */
@@ -358,9 +433,9 @@ final class ParityTest extends TestCase
     public function test_row_operation_parity(): void
     {
         $items = [
-            ['id' => 1, 'name' => 'Alice', 'role' => 'admin'],
-            ['id' => 2, 'name' => 'Bob', 'role' => 'user'],
-            ['id' => 3, 'name' => 'Carol', 'role' => 'user'],
+            ['id' => 1, 'name' => 'Alice', 'role' => 'admin', 'nickname' => null],
+            ['id' => 2, 'name' => 'Bob', 'role' => 'user', 'nickname' => 'Bobby'],
+            ['id' => 3, 'name' => 'Carol', 'role' => 'user', 'nickname' => null],
         ];
         [$eager, $lazy] = $this->pair($items);
 
@@ -376,5 +451,10 @@ final class ParityTest extends TestCase
         $this->assertSame($eager->avg('id'), $lazy->avg('id'));
         $this->assertSame($eager->min('id'), $lazy->min('id'));
         $this->assertSame($eager->max('id'), $lazy->max('id'));
+        $this->assertSame($eager->firstWhere('role', 'user'), $lazy->firstWhere('role', 'user'));
+        $this->assertSame($eager->whereNull('nickname')->all(), $lazy->whereNull('nickname')->all());
+        $this->assertSame($eager->whereNotNull('nickname')->all(), $lazy->whereNotNull('nickname')->all());
+        $this->assertSame($eager->implode(', ', 'name'), $lazy->implode(', ', 'name'));
+        $this->assertSame($eager->sole('id', 1), $lazy->sole('id', 1));
     }
 }

@@ -367,6 +367,46 @@ class LazyCollection implements Enumerable
         });
     }
 
+    /**
+     * Map each item through a callback, dropping null results.
+     *
+     * Keys are preserved — call `values()` to renumber to a 0-based list.
+     *
+     * @template  TNewValue
+     * @param  callable(TValue, TKey): (TNewValue|null) $callback
+     * @return  static<TKey, TNewValue>
+     */
+    public function filterMap(callable $callback): static
+    {
+        return new static(function () use ($callback): \Generator {
+            foreach ($this as $key => $item) {
+                $mapped = $callback($item, $key);
+                if ($mapped !== null) {
+                    yield $key => $mapped;
+                }
+            }
+        });
+    }
+
+    /**
+     * Filter the collection to items that fail the given callback.
+     *
+     * When no callback is given, truthy items are dropped. Keys are preserved.
+     *
+     * @param  (callable(TValue, TKey): bool)|null $callback
+     * @return  static
+     */
+    public function reject(?callable $callback = null): static
+    {
+        return new static(function () use ($callback): \Generator {
+            foreach ($this as $key => $item) {
+                if (!($callback ?? fn ($v) => (bool) $v)($item, $key)) {
+                    yield $key => $item;
+                }
+            }
+        });
+    }
+
     // ---- Reductions ----
 
     /**
@@ -580,6 +620,154 @@ class LazyCollection implements Enumerable
         return false;
     }
 
+    /**
+     * Determine whether the collection is empty.
+     *
+     * Pulls at most one item from the stream.
+     *
+     * @return  bool
+     */
+    public function isEmpty(): bool
+    {
+        foreach ($this as $item) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Determine whether the collection is not empty.
+     *
+     * Pulls at most one item from the stream.
+     *
+     * @return  bool
+     */
+    public function isNotEmpty(): bool
+    {
+        foreach ($this as $item) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get the single item matching the given criteria.
+     *
+     * With no arguments the collection must hold exactly one item. With one
+     * argument, matching is strict value equality — a callable value is
+     * checked as a value, never invoked as a predicate. With a column and
+     * value, the column is compared using the given operator.
+     *
+     * Counting stops at the third match — a larger surplus is not drained
+     * from the stream.
+     *
+     * @param  mixed  $key  A value to find, or a column name for the comparison form.
+     * @param  mixed  $value  The value the column is compared against.
+     * @param  ComparisonOperator  $operator
+     * @return  TValue
+     *
+     * @throws \LogicException When no item, two items, or three or more items match.
+     */
+    public function sole(mixed $key = null, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): mixed
+    {
+        $predicate = match (func_num_args()) {
+            0 => fn ($item, $itemKey) => true,
+            1 => fn ($item, $itemKey) => $item === $key,
+            default => fn ($item, $itemKey) => $operator->compare($this->value($item, $key), $value),
+        };
+
+        $found = null;
+        $matches = 0;
+        foreach ($this as $itemKey => $item) {
+            if ($predicate($item, $itemKey)) {
+                $found = $item;
+                if (++$matches === 3) {
+                    throw new \LogicException('2 or more items match — the collection must contain exactly one matching item.');
+                }
+            }
+        }
+
+        if ($matches === 0) {
+            throw new \LogicException('Item not found — the collection must contain exactly one matching item.');
+        }
+        if ($matches === 2) {
+            throw new \LogicException('2 items match — the collection must contain exactly one matching item.');
+        }
+
+        /** @var TValue $found */
+        return $found;
+    }
+
+    /**
+     * Get the first item whose column matches a value.
+     *
+     * Returns null when nothing matches — chain `first()` for a custom default.
+     *
+     * @param  (TValue is array ? key-of<TValue> : string) $key
+     * @param  mixed $value
+     * @param  ComparisonOperator $operator
+     * @return  TValue|null
+     */
+    public function firstWhere(int|string $key, mixed $value = null, ComparisonOperator $operator = ComparisonOperator::Equals): mixed
+    {
+        foreach ($this as $item) {
+            if ($operator->compare($this->value($item, $key), $value)) {
+                return $item;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Filter the collection to items that are null.
+     *
+     * With no column, the item itself is checked; otherwise the column's
+     * value is checked. Keys are preserved.
+     *
+     * @param  ((TValue is array ? key-of<TValue> : string)|null) $key
+     * @return  static
+     */
+    public function whereNull(int|string|null $key = null): static
+    {
+        return $this->filter(function ($item) use ($key) {
+            return $key === null ? $item === null : $this->value($item, $key) === null;
+        });
+    }
+
+    /**
+     * Filter the collection to items that are not null.
+     *
+     * With no column, the item itself is checked; otherwise the column's
+     * value is checked. Keys are preserved.
+     *
+     * @param  ((TValue is array ? key-of<TValue> : string)|null) $key
+     * @return  static
+     */
+    public function whereNotNull(int|string|null $key = null): static
+    {
+        return $this->filter(function ($item) use ($key) {
+            return $key === null ? $item !== null : $this->value($item, $key) !== null;
+        });
+    }
+
+    /**
+     * Join the collection's values, or a single column of each item.
+     *
+     * This is a terminal operation — the stream is consumed.
+     *
+     * @param  string $glue
+     * @param  ((TValue is array ? key-of<TValue> : string)|null) $column
+     * @return  string
+     */
+    public function implode(string $glue, int|string|null $column = null): string
+    {
+        $parts = [];
+        foreach ($this as $item) {
+            $parts[] = (string) ($column === null ? $item : $this->value($item, $column));
+        }
+        return implode($glue, $parts);
+    }
+
     // ---- Iteration ----
 
     /**
@@ -786,6 +974,95 @@ class LazyCollection implements Enumerable
                 yield $key => $item;
                 $index++;
                 $taken++;
+            }
+        });
+    }
+
+    /**
+     * Take items while the callback passes, stopping at the first failure.
+     *
+     * Keys are preserved. Streams lazily — on an infinite source the result
+     * ends as soon as the callback fails.
+     *
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  static
+     */
+    public function takeWhile(callable $callback): static
+    {
+        return new static(function () use ($callback): \Generator {
+            foreach ($this as $key => $item) {
+                if (!$callback($item, $key)) {
+                    break;
+                }
+                yield $key => $item;
+            }
+        });
+    }
+
+    /**
+     * Skip items while the callback passes, keeping the rest.
+     *
+     * Only the initial run of passing items is skipped — after the first
+     * failure, every remaining item is kept even if the callback passes
+     * again. Keys are preserved. Streams lazily — on an infinite source the
+     * result never ends while the callback keeps passing.
+     *
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  static
+     */
+    public function skipWhile(callable $callback): static
+    {
+        return new static(function () use ($callback): \Generator {
+            $failed = false;
+            foreach ($this as $key => $item) {
+                $failed = $failed || !$callback($item, $key);
+                if ($failed) {
+                    yield $key => $item;
+                }
+            }
+        });
+    }
+
+    /**
+     * Take items until the callback passes, stopping at the first success.
+     *
+     * Keys are preserved. Streams lazily — on an infinite source the result
+     * ends as soon as the callback passes.
+     *
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  static
+     */
+    public function takeUntil(callable $callback): static
+    {
+        return new static(function () use ($callback): \Generator {
+            foreach ($this as $key => $item) {
+                if ($callback($item, $key)) {
+                    break;
+                }
+                yield $key => $item;
+            }
+        });
+    }
+
+    /**
+     * Skip items until the callback passes, keeping the rest.
+     *
+     * The item on which the callback first passes is the first kept item.
+     * Keys are preserved. Streams lazily — on an infinite source the result
+     * never ends while the callback keeps failing.
+     *
+     * @param  callable(TValue, TKey): bool $callback
+     * @return  static
+     */
+    public function skipUntil(callable $callback): static
+    {
+        return new static(function () use ($callback): \Generator {
+            $passed = false;
+            foreach ($this as $key => $item) {
+                $passed = $passed || $callback($item, $key);
+                if ($passed) {
+                    yield $key => $item;
+                }
             }
         });
     }
