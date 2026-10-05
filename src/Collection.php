@@ -314,7 +314,11 @@ class Collection implements Enumerable, \Countable, \ArrayAccess
                 $results[$key] = $mapped;
             }
         }
-        return new static($results);
+
+        /** @var static<TKey, TNewValue> $result */
+        $result = new static($results);
+
+        return $result;
     }
 
     /**

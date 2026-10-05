@@ -378,7 +378,8 @@ class LazyCollection implements Enumerable
      */
     public function filterMap(callable $callback): static
     {
-        return new static(function () use ($callback): \Generator {
+        /** @var static<TKey, TNewValue> $result */
+        $result = new static(function () use ($callback): \Generator {
             foreach ($this as $key => $item) {
                 $mapped = $callback($item, $key);
                 if ($mapped !== null) {
@@ -386,6 +387,8 @@ class LazyCollection implements Enumerable
                 }
             }
         });
+
+        return $result;
     }
 
     /**
